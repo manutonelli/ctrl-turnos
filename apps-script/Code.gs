@@ -14,6 +14,7 @@ function doPost(event) {
       case "slots": return json_({ ok: true, slots: listSlots_(payload.from, payload.to) });
       case "create": return json_({ ok: true, booking: createBooking_(payload.booking || {}) });
       case "get": return json_({ ok: true, booking: getBooking_(payload.token) });
+      case "find": return json_({ ok: true, booking: findBookingByContact_(payload.email, payload.whatsapp) });
       case "cancel": return json_({ ok: true, booking: cancelBooking_(payload.token) });
       case "reschedule": return json_({ ok: true, booking: rescheduleBooking_(payload.token, payload.date, payload.time) });
       default: throw new Error("Acción inválida");
@@ -74,6 +75,18 @@ function createBooking_(booking) {
 function getBooking_(token) {
   const record = findByToken_(token);
   return serializeRow_(record.values);
+}
+
+function findBookingByContact_(email, whatsapp) {
+  if (!email || !whatsapp) throw new Error("Ingresá tu email y tu WhatsApp para buscar el turno");
+  const sheet = sheet_();
+  if (sheet.getLastRow() < 2) throw new Error("No encontramos un turno confirmado con esos datos");
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
+  const targetEmail = normalizeEmail_(email);
+  const targetPhone = normalizePhone_(whatsapp);
+  const index = rows.findIndex(row => row[7] === "Confirmado" && normalizeEmail_(row[5]) === targetEmail && normalizePhone_(row[4]) === targetPhone);
+  if (index < 0) throw new Error("No encontramos un turno confirmado con esos datos");
+  return serializeRow_(rows[index]);
 }
 
 function cancelBooking_(token) {
@@ -162,6 +175,8 @@ function requireSecret_(secret) {
 
 function sheet_() { return SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(TURNOS_SHEET); }
 function clean_(value) { return String(value).trim().slice(0, 500); }
+function normalizeEmail_(value) { return String(value || "").trim().toLowerCase(); }
+function normalizePhone_(value) { return String(value || "").replace(/\D/g, ""); }
 function parseDate_(value) { const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/); return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null; }
 function formatDate_(date) { return Utilities.formatDate(date, TIME_ZONE, "yyyy-MM-dd"); }
 function json_(data) { return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON); }

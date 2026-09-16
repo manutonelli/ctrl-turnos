@@ -53,6 +53,55 @@ export default function Home() {
         return { status: "form_opened", day: value.day, time: value.time };
       },
     }, { signal: lifecycle.signal })).catch(() => undefined);
+
+    void Promise.resolve(context.registerTool({
+      name: "find_booking",
+      title: "Buscar mi turno",
+      description: "Busca el turno confirmado de una persona a partir de su email y su WhatsApp, para poder verlo, reprogramarlo o cancelarlo.",
+      inputSchema: { type: "object", properties: { email: { type: "string" }, whatsapp: { type: "string" } }, required: ["email", "whatsapp"], additionalProperties: false },
+      annotations: { readOnlyHint: true, untrustedContentHint: false },
+      async execute(input: unknown) {
+        const value = input as { email?: string; whatsapp?: string };
+        if (!value.email || !value.whatsapp) throw new Error("Necesito tu email y tu WhatsApp para buscar el turno.");
+        const response = await fetch("/api/turnos", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "find", email: value.email, whatsapp: value.whatsapp }) });
+        const data = await response.json() as { ok?: boolean; error?: string; booking?: unknown };
+        if (!data.ok) throw new Error(data.error || "No pudimos encontrar el turno.");
+        return { status: "found", booking: data.booking };
+      },
+    }, { signal: lifecycle.signal })).catch(() => undefined);
+
+    void Promise.resolve(context.registerTool({
+      name: "cancel_booking",
+      title: "Cancelar mi turno",
+      description: "Cancela un turno confirmado usando el token obtenido con find_booking.",
+      inputSchema: { type: "object", properties: { token: { type: "string" } }, required: ["token"], additionalProperties: false },
+      annotations: { readOnlyHint: false, untrustedContentHint: false },
+      async execute(input: unknown) {
+        const value = input as { token?: string };
+        if (!value.token) throw new Error("Necesito el token del turno para cancelarlo.");
+        const response = await fetch("/api/turnos", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "cancel", token: value.token }) });
+        const data = await response.json() as { ok?: boolean; error?: string; booking?: unknown };
+        if (!data.ok) throw new Error(data.error || "No pudimos cancelar el turno.");
+        return { status: "cancelled", booking: data.booking };
+      },
+    }, { signal: lifecycle.signal })).catch(() => undefined);
+
+    void Promise.resolve(context.registerTool({
+      name: "reschedule_booking",
+      title: "Reprogramar mi turno",
+      description: "Reprograma un turno confirmado a un nuevo día y horario, usando el token obtenido con find_booking.",
+      inputSchema: { type: "object", properties: { token: { type: "string" }, date: { type: "string" }, time: { type: "string" } }, required: ["token", "date", "time"], additionalProperties: false },
+      annotations: { readOnlyHint: false, untrustedContentHint: false },
+      async execute(input: unknown) {
+        const value = input as { token?: string; date?: string; time?: string };
+        if (!value.token || !value.date || !value.time) throw new Error("Necesito el token del turno y el nuevo día y horario.");
+        const response = await fetch("/api/turnos", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "reschedule", token: value.token, date: value.date, time: value.time }) });
+        const data = await response.json() as { ok?: boolean; error?: string; booking?: unknown };
+        if (!data.ok) throw new Error(data.error || "No pudimos reprogramar el turno.");
+        return { status: "rescheduled", booking: data.booking };
+      },
+    }, { signal: lifecycle.signal })).catch(() => undefined);
+
     return () => lifecycle.abort();
   }, []);
 
