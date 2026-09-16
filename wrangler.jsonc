@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ctrl-turnos",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist/client"
+  },
+  "vars": {
+    "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbwBF2u0b55Aj0ZPclbrJjAZ8xBEeaf4imeIQbGCfg5MS16_R_GkT2aaRl8zLRAWAPln/exec"
+  }
+}
