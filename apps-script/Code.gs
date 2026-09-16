@@ -14,7 +14,7 @@ function doPost(event) {
       case "slots": return json_({ ok: true, slots: listSlots_(payload.from, payload.to) });
       case "create": return json_({ ok: true, booking: createBooking_(payload.booking || {}) });
       case "get": return json_({ ok: true, booking: getBooking_(payload.token) });
-      case "find": return json_({ ok: true, booking: findBookingByContact_(payload.email, payload.whatsapp) });
+      case "lookup": return json_({ ok: true, bookings: lookupBookings_(payload.email, payload.whatsapp) });
       case "cancel": return json_({ ok: true, booking: cancelBooking_(payload.token) });
       case "reschedule": return json_({ ok: true, booking: rescheduleBooking_(payload.token, payload.date, payload.time) });
       default: throw new Error("Acción inválida");
@@ -77,16 +77,18 @@ function getBooking_(token) {
   return serializeRow_(record.values);
 }
 
-function findBookingByContact_(email, whatsapp) {
-  if (!email || !whatsapp) throw new Error("Ingresá tu email y tu WhatsApp para buscar el turno");
+function lookupBookings_(email, whatsapp) {
+  const normalizedEmail = normalizeEmail_(email);
+  const normalizedWhatsapp = normalizePhone_(whatsapp);
+  if (!normalizedEmail || !normalizedWhatsapp) throw new Error("Ingresá el email y WhatsApp usados al reservar");
+
   const sheet = sheet_();
-  if (sheet.getLastRow() < 2) throw new Error("No encontramos un turno confirmado con esos datos");
+  if (sheet.getLastRow() < 2) return [];
   const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
-  const targetEmail = normalizeEmail_(email);
-  const targetPhone = normalizePhone_(whatsapp);
-  const index = rows.findIndex(row => row[7] === "Confirmado" && normalizeEmail_(row[5]) === targetEmail && normalizePhone_(row[4]) === targetPhone);
-  if (index < 0) throw new Error("No encontramos un turno confirmado con esos datos");
-  return serializeRow_(rows[index]);
+  return rows
+    .filter(row => row[7] === "Confirmado" && normalizeEmail_(row[5]) === normalizedEmail && normalizePhone_(row[4]) === normalizedWhatsapp)
+    .map(serializeRow_)
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
 
 function cancelBooking_(token) {
