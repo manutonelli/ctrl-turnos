@@ -1,4 +1,21 @@
-# vinext-starter
+# Ctrl Turnos
+
+Turnera web para AREA Estudio Contable. El frontend se conecta con Google Sheets a través de un Web App de Google Apps Script.
+
+## Conectar Google Sheets
+
+1. Abrir la Sheet `Ctrl Turnos - AREA Estudio Contable`.
+2. Ir a **Extensiones → Apps Script**.
+3. Reemplazar el contenido de `Código.gs` por `apps-script/Code.gs`.
+4. En **Configuración del proyecto → Propiedades del script**, crear `API_SECRET` con una clave segura.
+5. Ejecutar `setupCtrlTurnos` una vez y aceptar los permisos.
+6. Elegir **Implementar → Nueva implementación → Aplicación web**.
+7. Configurar **Ejecutar como: Yo** y **Quién tiene acceso: Cualquier persona**.
+8. Copiar la URL terminada en `/exec` y configurarla como `GOOGLE_APPS_SCRIPT_URL` en el hosting, junto con la misma clave en `CTRL_TURNOS_API_SECRET`.
+
+La URL de Apps Script nunca se expone directamente al navegador: la aplicación usa `/api/turnos` como intermediario.
+
+## Base técnica
 
 A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
 
