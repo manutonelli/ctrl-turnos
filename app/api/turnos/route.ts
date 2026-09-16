@@ -10,13 +10,25 @@ async function proxy(payload: Record<string, unknown>) {
   if (!runtime.GOOGLE_APPS_SCRIPT_URL || !runtime.CTRL_TURNOS_API_SECRET) {
     return Response.json({ ok: false, error: "La agenda todavía no está conectada" }, { status: 503 });
   }
-  const response = await fetch(runtime.GOOGLE_APPS_SCRIPT_URL, {
-    method: "POST",
-    headers: { "content-type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ ...payload, secret: runtime.CTRL_TURNOS_API_SECRET }),
-    redirect: "follow",
-  });
-  const data = await response.json() as { ok?: boolean; error?: string };
+  let response: Response;
+  try {
+    response = await fetch(runtime.GOOGLE_APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "content-type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ ...payload, secret: runtime.CTRL_TURNOS_API_SECRET }),
+      redirect: "follow",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "error desconocido";
+    return Response.json({ ok: false, error: `No pudimos contactar Google Apps Script: ${message}` }, { status: 502 });
+  }
+  const text = await response.text();
+  let data: { ok?: boolean; error?: string };
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return Response.json({ ok: false, error: `Google Apps Script devolvió una respuesta inválida (status ${response.status}): ${text.slice(0, 200)}` }, { status: 502 });
+  }
   return Response.json(data, { status: data.ok ? 200 : 400 });
 }
 
