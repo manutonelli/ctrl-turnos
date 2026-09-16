@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Ctrl Turnos",
-  description: "Reservá, reprogramá o cancelá tu turno online.",
+  title: "Turnos | AREA Estudio Contable",
+  description: "Reservá una consulta presencial con AREA Estudio Contable.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
