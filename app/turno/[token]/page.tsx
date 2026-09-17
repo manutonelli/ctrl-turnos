@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CtrlTurnosBrand } from "../../ctrl-turnos-brand";
 
 type Booking = { date: string; time: string; name: string; status: string };
 
@@ -98,6 +99,9 @@ export default function ManageBooking({
           </div>
         )}
       </section>
+      <div className="mx-auto max-w-[680px]">
+        <CtrlTurnosBrand />
+      </div>
     </main>
   );
 }
