@@ -74,7 +74,7 @@ function createBooking_(booking) {
 
 function getBooking_(token) {
   const record = findByToken_(token);
-  return serializeRow_(record.values);
+  return serializeRow_(record.values, record.displayTime);
 }
 
 function lookupBookings_(email, whatsapp) {
@@ -84,30 +84,33 @@ function lookupBookings_(email, whatsapp) {
 
   const sheet = sheet_();
   if (sheet.getLastRow() < 2) return [];
-  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
+  const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11);
+  const rows = range.getValues();
+  const displayRows = range.getDisplayValues();
   return rows
-    .filter(row => row[7] === "Confirmado" && normalizeEmail_(row[5]) === normalizedEmail && normalizePhone_(row[4]) === normalizedWhatsapp)
-    .map(serializeRow_)
+    .map((row, index) => ({ row, displayTime: displayRows[index][2] }))
+    .filter(item => item.row[7] === "Confirmado" && normalizeEmail_(item.row[5]) === normalizedEmail && normalizePhone_(item.row[4]) === normalizedWhatsapp)
+    .map(item => serializeRow_(item.row, item.displayTime))
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
 
 function cancelBooking_(token) {
   const record = findByToken_(token);
-  ensureCancelable_(record.values);
+  ensureCancelable_(record.values, record.displayTime);
   record.sheet.getRange(record.row, 8).setValue("Cancelado");
   record.sheet.getRange(record.row, 11).setValue(new Date());
   record.values[7] = "Cancelado";
-  return serializeRow_(record.values);
+  return serializeRow_(record.values, record.displayTime);
 }
 
 function rescheduleBooking_(token, date, time) {
   const record = findByToken_(token);
-  ensureCancelable_(record.values);
+  ensureCancelable_(record.values, record.displayTime);
   validateSlot_(date, time);
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    const currentKey = formatDate_(new Date(record.values[1])) + "|" + record.values[2];
+    const currentKey = formatDate_(new Date(record.values[1])) + "|" + record.displayTime;
     const newKey = date + "|" + time;
     const booked = bookedKeys_();
     if (booked[newKey] && newKey !== currentKey) throw new Error("Ese horario ya no está disponible");
@@ -116,7 +119,7 @@ function rescheduleBooking_(token, date, time) {
     record.sheet.getRange(record.row, 11).setValue(new Date());
     record.values[1] = parseDate_(date);
     record.values[2] = time;
-    return serializeRow_(record.values);
+    return serializeRow_(record.values, time);
   } finally {
     lock.releaseLock();
   }
@@ -139,10 +142,10 @@ function validateSlot_(date, time) {
   if (appointment.getTime() < Date.now() + 60 * 60 * 1000) throw new Error("El turno debe reservarse con una hora de anticipación");
 }
 
-function ensureCancelable_(values) {
+function ensureCancelable_(values, displayTime) {
   if (values[7] !== "Confirmado") throw new Error("El turno ya no está activo");
   const appointment = new Date(values[1]);
-  const parts = String(values[2]).split(":").map(Number);
+  const parts = String(displayTime).split(":").map(Number);
   appointment.setHours(parts[0], parts[1], 0, 0);
   if (appointment.getTime() < Date.now() + 60 * 60 * 1000) throw new Error("El turno solo puede modificarse hasta una hora antes");
 }
@@ -151,8 +154,10 @@ function bookedKeys_() {
   const sheet = sheet_();
   const keys = {};
   if (sheet.getLastRow() < 2) return keys;
-  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
-  rows.forEach(row => { if (row[7] === "Confirmado") keys[formatDate_(new Date(row[1])) + "|" + row[2]] = true; });
+  const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11);
+  const rows = range.getValues();
+  const displayRows = range.getDisplayValues();
+  rows.forEach((row, index) => { if (row[7] === "Confirmado") keys[formatDate_(new Date(row[1])) + "|" + displayRows[index][2]] = true; });
   return keys;
 }
 
@@ -160,14 +165,16 @@ function findByToken_(token) {
   if (!token) throw new Error("Enlace de turno inválido");
   const sheet = sheet_();
   if (sheet.getLastRow() < 2) throw new Error("Turno no encontrado");
-  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
+  const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11);
+  const rows = range.getValues();
+  const displayRows = range.getDisplayValues();
   const index = rows.findIndex(row => String(row[8]) === String(token));
   if (index < 0) throw new Error("Turno no encontrado");
-  return { sheet, row: index + 2, values: rows[index] };
+  return { sheet, row: index + 2, values: rows[index], displayTime: displayRows[index][2] };
 }
 
-function serializeRow_(row) {
-  return { id: row[0], date: formatDate_(new Date(row[1])), time: row[2], name: row[3], whatsapp: row[4], email: row[5], notes: row[6], status: row[7], token: row[8] };
+function serializeRow_(row, displayTime) {
+  return { id: row[0], date: formatDate_(new Date(row[1])), time: displayTime, name: row[3], whatsapp: row[4], email: row[5], notes: row[6], status: row[7], token: row[8] };
 }
 
 function requireSecret_(secret) {
