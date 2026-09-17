@@ -23,6 +23,8 @@ function doPost(event) {
       case "adminSaveSchedule": saveSchedule_(payload.schedule || []); return json_({ ok: true });
       case "adminBlock": addBlock_(payload.date); return json_({ ok: true, blockedDates: blockedDates_() });
       case "adminUnblock": removeBlock_(payload.date); return json_({ ok: true, blockedDates: blockedDates_() });
+      case "adminCancel": return json_({ ok: true, booking: adminCancel_(payload.id) });
+      case "adminReschedule": return json_({ ok: true, booking: adminReschedule_(payload.id, payload.date, payload.time) });
       default: throw new Error("Acción inválida");
     }
   } catch (error) {
@@ -225,6 +227,9 @@ function blockedDateMap_() { const map = {}; blockedDates_().forEach(date => map
 function addBlock_(date) { if (!parseDate_(date)) throw new Error("Fecha inválida"); if (!blockedDateMap_()[date]) ensureSheet_(BLOCKS_SHEET, ["Fecha"]).appendRow([parseDate_(date)]); }
 function removeBlock_(date) { const sheet = ensureSheet_(BLOCKS_SHEET, ["Fecha"]); for (let row = sheet.getLastRow(); row >= 2; row--) { const value = sheet.getRange(row, 1).getValue(); const formatted = value instanceof Date ? formatDate_(value) : String(value); if (formatted === date) sheet.deleteRow(row); } }
 function adminBookings_() { const sheet = sheet_(); if (sheet.getLastRow() < 2) return []; const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11); const values = range.getValues(); const display = range.getDisplayValues(); const today = formatDate_(new Date()); return values.map((row, i) => serializeRow_(row, display[i][2])).filter(item => item.status === "Confirmado" && item.date >= today).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time)).slice(0, 50); }
+function findById_(id) { const sheet = sheet_(); if (!id || sheet.getLastRow() < 2) throw new Error("Turno no encontrado"); const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11); const rows = range.getValues(); const display = range.getDisplayValues(); const index = rows.findIndex(row => String(row[0]) === String(id)); if (index < 0) throw new Error("Turno no encontrado"); return { sheet, row: index + 2, values: rows[index], displayTime: display[index][2] }; }
+function adminCancel_(id) { const record = findById_(id); record.sheet.getRange(record.row, 8).setValue("Cancelado"); record.sheet.getRange(record.row, 11).setValue(new Date()); record.values[7] = "Cancelado"; return serializeRow_(record.values, record.displayTime); }
+function adminReschedule_(id, date, time) { validateSlot_(date, time); const record = findById_(id); const newKey = date + "|" + time; const currentKey = formatDate_(new Date(record.values[1])) + "|" + record.displayTime; if (bookedKeys_()[newKey] && newKey !== currentKey) throw new Error("Ese horario ya está ocupado"); record.sheet.getRange(record.row, 2).setValue(parseDate_(date)); record.sheet.getRange(record.row, 3).setValue(time); record.sheet.getRange(record.row, 8).setValue("Confirmado"); record.sheet.getRange(record.row, 11).setValue(new Date()); record.values[1] = parseDate_(date); record.values[7] = "Confirmado"; return serializeRow_(record.values, time); }
 function ensureSheet_(name, headers) { const book = SpreadsheetApp.openById(SPREADSHEET_ID); let sheet = book.getSheetByName(name); if (!sheet) { sheet = book.insertSheet(name); sheet.appendRow(headers); } return sheet; }
 function toMinutes_(time) { const parts = String(time).split(":").map(Number); return parts[0] * 60 + parts[1]; }
 function fromMinutes_(minutes) { return String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0"); }
