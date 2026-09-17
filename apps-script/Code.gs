@@ -205,7 +205,22 @@ function bookedKeys_() {
   rows.forEach((row, index) => { if (row[7] === "Confirmado") keys[formatDate_(new Date(row[1])) + "|" + displayRows[index][2]] = true; });
   return keys;
 }
-function bookedIntervals_() { const sheet = sheet_(); const result = {}; if (sheet.getLastRow() < 2) return result; const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(13, sheet.getLastColumn())); const values = range.getValues(); const display = range.getDisplayValues(); values.forEach((row, index) => { if (row[7] !== "Confirmado") return; const date = formatDate_(new Date(row[1])); const start = toMinutes_(display[index][2]); (result[date] ||= []).push({ start, end: start + (Number(row[12]) || 30) }); }); return result; }
+function bookedIntervals_() {
+  const sheet = sheet_();
+  const result = {};
+  if (sheet.getLastRow() < 2) return result;
+  const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(13, sheet.getLastColumn()));
+  const values = range.getValues();
+  const display = range.getDisplayValues();
+  values.forEach((row, index) => {
+    if (row[7] !== "Confirmado") return;
+    const date = formatDate_(new Date(row[1]));
+    const start = toMinutes_(display[index][2]);
+    if (!result[date]) result[date] = [];
+    result[date].push({ start: start, end: start + (Number(row[12]) || 30) });
+  });
+  return result;
+}
 
 function findByToken_(token) {
   if (!token) throw new Error("Enlace de turno inválido");
