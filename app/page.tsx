@@ -413,7 +413,7 @@ export default function Home() {
               </div>
             </div>
             <p className="mt-5 text-center text-xs text-[var(--text-faint)]">
-              Te avisamos por WhatsApp el día anterior
+              Después de reservar vas a poder administrar tu turno online
             </p>
           </section>
         )}
