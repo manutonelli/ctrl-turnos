@@ -5,6 +5,7 @@ import { CalendarDays, Check, Clock3, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { MyBookingsPanel } from "./my-bookings-panel";
 
 const allTimes = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30"];
 
@@ -29,6 +30,7 @@ function nextBusinessDays() {
 const days = nextBusinessDays();
 
 export default function Home() {
+  const [manage, setManage] = useState(false);
   const [day, setDay] = useState(days[0].date);
   const [time, setTime] = useState("");
   const [open, setOpen] = useState(false);
@@ -41,6 +43,7 @@ export default function Home() {
   const selectedDay = days.find((item) => item.date === day) ?? days[0];
 
   useEffect(() => {
+    setManage(new URLSearchParams(window.location.search).get("administrar") === "1");
     setReprogramToken(new URLSearchParams(window.location.search).get("reprogramar") || "");
     const params = new URLSearchParams({ action: "slots", from: days[0].date, to: days[days.length - 1].date });
     fetch(`/api/turnos?${params}`).then((response) => response.json()).then((data) => {
@@ -86,15 +89,15 @@ export default function Home() {
     <main className="min-h-screen bg-[#f3f7f5] text-[#13231d]">
       <header className="border-b border-[#d8e4df] bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 md:px-8">
-          <button className="flex items-center gap-3 text-left" onClick={() => setAdmin(false)}>
+          <button className="flex items-center gap-3 text-left" onClick={() => { setManage(false); window.history.replaceState({}, "", "/"); }}>
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#173f70] text-lg font-semibold text-white">A</span>
             <span><strong className="block text-[17px] leading-tight">AREA Estudio Contable</strong><small className="text-sm text-[#63736d]">Turnos para consultas</small></span>
           </button>
-          <Button asChild variant="outline" className="rounded-xl border-[#cfddd7]"><a href="/mis-turnos">Administrar mi turno</a></Button>
+          <Button variant="outline" className="rounded-xl border-[#cfddd7]" onClick={() => { const next = !manage; setManage(next); window.history.replaceState({}, "", next ? "/?administrar=1" : "/"); }}>{manage ? "Volver" : "Administrar mi turno"}</Button>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-8 px-5 py-8 md:grid-cols-[.85fr_1.6fr] md:px-8 md:py-14">
+      {manage ? <MyBookingsPanel /> : <section className="mx-auto grid max-w-6xl gap-8 px-5 py-8 md:grid-cols-[.85fr_1.6fr] md:px-8 md:py-14">
           <aside className="self-start rounded-3xl bg-[#102f55] p-7 text-white shadow-[0_20px_60px_rgba(16,47,85,.18)] md:sticky md:top-8 md:p-9">
             <img src="/area-logo.png" alt="AREA Estudio Contable" className="mb-7 w-full max-w-[230px] rounded-xl bg-black object-contain" />
             <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[.14em] text-[#cbdcf2]">Consultas presenciales</span>
@@ -128,7 +131,7 @@ export default function Home() {
             <Button disabled={!time} onClick={() => { setConfirmed(false); setOpen(true); }} className="mt-8 h-12 w-full rounded-xl bg-[#173f70] text-base hover:bg-[#102f55] disabled:bg-[#b9c4d1]">Continuar con la reserva</Button>
             <p className="mt-4 text-center text-xs text-[#75847f]">Tus datos se utilizan solamente para gestionar el turno.</p>
           </div>
-      </section>
+      </section>}
 
       <Dialog open={open} onOpenChange={setOpen}><DialogContent className="rounded-3xl sm:max-w-md">{!confirmed ? <><DialogHeader><DialogTitle className="text-2xl">Completá tus datos</DialogTitle><DialogDescription>Consulta presencial el {selectedDay.label.toLowerCase()} a las {time}. La confirmación es automática.</DialogDescription></DialogHeader><form className="mt-3 space-y-4" onSubmit={submit}><label className="block text-sm font-semibold">Nombre y apellido<Input name="name" required className="mt-2 h-11 rounded-xl" placeholder="Ej: Manuela Gómez" /></label><label className="block text-sm font-semibold">WhatsApp<Input name="whatsapp" required className="mt-2 h-11 rounded-xl" placeholder="Ej: 2345 43-8544" /></label><label className="block text-sm font-semibold">Email<Input name="email" required type="email" className="mt-2 h-11 rounded-xl" placeholder="nombre@email.com" /></label><label className="block text-sm font-semibold">Observaciones<Input name="notes" className="mt-2 h-11 rounded-xl" placeholder="Contanos brevemente el motivo de consulta" /></label>{error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}<Button className="h-12 w-full rounded-xl bg-[#173f70] text-base hover:bg-[#102f55]">Confirmar consulta</Button></form></> : <div className="py-5 text-center"><span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#e5effa] text-[#173f70]"><Check size={30} /></span><DialogTitle className="mt-5 text-2xl">¡Consulta confirmada!</DialogTitle><DialogDescription className="mx-auto mt-2 max-w-xs text-base">Te esperamos el {selectedDay.label.toLowerCase()} a las {time} en Av. M. Cabral 3009.</DialogDescription>{bookingToken && <a className="mt-4 block break-all text-sm font-semibold text-[#173f70] underline" href={`/turno/${bookingToken}`}>Administrar mi turno</a>}<Button onClick={() => setOpen(false)} className="mt-6 h-11 w-full rounded-xl bg-[#173f70] hover:bg-[#102f55]">Listo</Button></div>}</DialogContent></Dialog>
     </main>
