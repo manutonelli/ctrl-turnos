@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MyBookingsPanel } from "./my-bookings-panel";
 import { AdminPanel } from "./admin-panel";
+import { CtrlTurnosBrand } from "./ctrl-turnos-brand";
 
 function isoDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -557,6 +558,7 @@ export default function Home() {
             )}
           </section>
         )}
+        <CtrlTurnosBrand />
       </div>
     </main>
   );
