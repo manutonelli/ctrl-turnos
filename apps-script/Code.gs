@@ -1,7 +1,7 @@
 const SPREADSHEET_ID = "1BJOrpXt5wvWZ7e66OWcG8KZ2SrJYn97D5N7YqPNMdBk";
 const TIME_ZONE = "America/Argentina/Buenos_Aires";
 const TURNOS_SHEET = "Turnos";
-const CONFIG_SHEET = "Configuracion";
+const CONFIG_SHEET = "Horarios";
 const BLOCKS_SHEET = "Bloqueos";
 
 function doGet() {
@@ -205,8 +205,12 @@ function requireSecret_(secret) {
 
 function getSchedule_() {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(CONFIG_SHEET);
-  if (!sheet) return [1,2,3,4,5].map((day, index) => ({ weekday: day, label: ["Lunes","Martes","Miércoles","Jueves","Viernes"][index], active: true, start: "09:00", end: "13:00", interval: 30 }));
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getDisplayValues().map(row => ({ weekday: Number(row[0]), label: row[1], active: String(row[2]).toLowerCase() === "true", start: row[3], end: row[4], interval: Number(row[5]) || 30 }));
+  const defaults = [1,2,3,4,5].map((day, index) => ({ weekday: day, label: ["Lunes","Martes","Miércoles","Jueves","Viernes"][index], active: true, start: "09:00", end: "13:00", interval: 30 }));
+  if (!sheet || sheet.getLastRow() < 6) return defaults;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getDisplayValues()
+    .map(row => ({ weekday: Number(row[0]), label: row[1], active: String(row[2]).toLowerCase() === "true", start: row[3], end: row[4], interval: Number(row[5]) || 30 }))
+    .filter(rule => rule.weekday >= 1 && rule.weekday <= 5 && /^\d{2}:\d{2}$/.test(rule.start) && /^\d{2}:\d{2}$/.test(rule.end));
+  return rows.length === 5 ? rows.sort((a, b) => a.weekday - b.weekday) : defaults;
 }
 function scheduleMap_() { const map = {}; getSchedule_().forEach(rule => map[rule.weekday] = rule); return map; }
 function saveSchedule_(schedule) {
