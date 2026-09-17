@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { CalendarDays, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CtrlTurnosBrand } from "./ctrl-turnos-brand";
 
 type Booking = {
   token: string;
@@ -172,6 +173,7 @@ export function MyBookingsPanel() {
           </div>
         )}
       </div>
+      <CtrlTurnosBrand />
     </section>
   );
 }
