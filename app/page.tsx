@@ -72,7 +72,7 @@ function BrandHeader({
         <span
           role="img"
           aria-label={businessName}
-          className="block h-16 w-36 bg-[var(--brand)] sm:h-20 sm:w-44"
+          className="block h-14 w-28 bg-[var(--brand)] sm:h-20 sm:w-44"
           style={{
             WebkitMaskImage: "url(/area-logo.png)",
             WebkitMaskPosition: "center",
@@ -271,7 +271,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[var(--page-bg)] text-[var(--text)]">
-      <div className="mx-auto max-w-[900px] px-5 pb-16 pt-6 sm:px-6 sm:pb-20 sm:pt-8">
+      <div className="mx-auto max-w-[900px] px-4 pb-12 pt-4 sm:px-6 sm:pb-20 sm:pt-8">
         <BrandHeader
           businessName={business.name}
           onHome={goHome}
@@ -281,7 +281,7 @@ export default function Home() {
           }}
         />
         {step === "slots" && (
-          <section className="pt-12 sm:pt-16">
+          <section className="pt-8 sm:pt-16">
             <h1 className="text-[30px] font-medium leading-[1.14] tracking-[-.025em] sm:text-[40px]">
               {business.welcome}
             </h1>
@@ -289,7 +289,7 @@ export default function Home() {
               Elegí el servicio, día y horario. Atención en {business.address}.
               La confirmación es inmediata.
             </p>
-            <div className="mt-10 rounded-[26px] bg-[var(--surface-2)] p-5 sm:mt-11 sm:rounded-[28px] sm:bg-white sm:p-8 sm:shadow-[0_18px_50px_rgba(16,47,85,.07)]">
+            <div className="mt-7 rounded-[22px] bg-white p-4 shadow-[0_12px_35px_rgba(16,47,85,.06)] sm:mt-11 sm:rounded-[28px] sm:p-8 sm:shadow-[0_18px_50px_rgba(16,47,85,.07)]">
               <p className="text-[11px] font-medium tracking-[.14em] text-[var(--text-faint)]">
                 SERVICIO
               </p>
@@ -349,7 +349,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <div className="mt-3 flex gap-2 sm:gap-2.5">
+                <div className="-mx-1 mt-3 flex snap-x gap-2 overflow-x-auto px-1 pb-2 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
                   {days.map((item) => {
                     const hasSlots = Array.from(available).some((key) =>
                       key.startsWith(`${item.date}|`),
@@ -362,7 +362,7 @@ export default function Home() {
                           setDay(item.date);
                           setTime("");
                         }}
-                        className={`min-w-0 flex-1 rounded-2xl border px-1 py-3 transition disabled:cursor-not-allowed ${day === item.date && hasSlots ? "border-[var(--brand)] bg-[var(--brand)] text-white" : hasSlots || loading ? "border-[var(--border)] bg-white text-[var(--text-2)]" : "border-[var(--border)] bg-[#f7f8fa] text-[#b6c1d0]"}`}
+                        className={`min-w-[68px] flex-none snap-start rounded-2xl border px-2 py-3 transition disabled:cursor-not-allowed sm:min-w-0 sm:flex-1 sm:px-1 ${day === item.date && hasSlots ? "border-[var(--brand)] bg-[var(--brand)] text-white" : hasSlots || loading ? "border-[var(--border)] bg-white text-[var(--text-2)]" : "border-[var(--border)] bg-[#f7f8fa] text-[#b6c1d0]"}`}
                       >
                         <span className="block text-[11px] font-medium opacity-70 sm:text-xs">
                           {item.short}
@@ -378,7 +378,7 @@ export default function Home() {
                   <p className="text-[11px] font-medium tracking-[.14em] text-[var(--text-faint)]">
                     HORARIO
                   </p>
-                  <div className="mt-3 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     {times.map((slot) => (
                       <button
                         key={slot}
@@ -431,7 +431,7 @@ export default function Home() {
           </section>
         )}
         {step === "data" && (
-          <section className="pt-12 sm:pt-16">
+          <section className="pt-8 sm:pt-16">
             <button
               disabled={submitting}
               onClick={() => setStep("slots")}
@@ -448,7 +448,7 @@ export default function Home() {
             </p>
             <form
               onSubmit={submit}
-              className={`relative mt-8 space-y-5 rounded-[28px] bg-white p-6 shadow-[0_18px_50px_rgba(16,47,85,.07)] transition sm:p-9 ${submitting ? "pointer-events-none opacity-75" : ""}`}
+              className={`relative mt-6 space-y-5 rounded-[22px] bg-white p-5 shadow-[0_18px_50px_rgba(16,47,85,.07)] transition sm:mt-8 sm:rounded-[28px] sm:p-9 ${submitting ? "pointer-events-none opacity-75" : ""}`}
             >
               {[
                 ["name", "Nombre y apellido", "Ej: Manuela Gómez", "text"],
@@ -502,11 +502,11 @@ export default function Home() {
           </section>
         )}
         {step === "confirmed" && (
-          <section className="pt-12 sm:pt-16">
+          <section className="pt-8 sm:pt-16">
             {confirmationStatus === "pending" && (
-              <div className="rounded-[28px] bg-[var(--brand)] px-7 py-11 text-white sm:px-9">
+              <div className="rounded-[22px] bg-[var(--brand)] px-5 py-9 text-white sm:rounded-[28px] sm:px-9 sm:py-11">
                 <LoaderCircle size={34} className="animate-spin opacity-80" />
-                <h1 className="mt-6 text-[32px] font-medium tracking-[-.025em] sm:text-[34px]">
+                <h1 className="mt-6 text-[27px] font-medium tracking-[-.025em] sm:text-[34px]">
                   Estamos agendando tu consulta
                 </h1>
                 <p className="mt-3 max-w-xl text-[17px] leading-7 text-white/85">
@@ -516,9 +516,9 @@ export default function Home() {
               </div>
             )}
             {confirmationStatus === "success" && (
-              <div className="rounded-[28px] bg-[var(--brand)] px-7 py-11 text-white sm:px-9">
+              <div className="rounded-[22px] bg-[var(--brand)] px-5 py-9 text-white sm:rounded-[28px] sm:px-9 sm:py-11">
                 <Check size={32} className="opacity-70" />
-                <h1 className="mt-6 text-[32px] font-medium tracking-[-.025em] sm:text-[34px]">
+                <h1 className="mt-6 text-[27px] font-medium tracking-[-.025em] sm:text-[34px]">
                   Consulta confirmada
                 </h1>
                 <p className="mt-3 max-w-xl text-[17px] leading-7 text-white/85">
@@ -528,7 +528,7 @@ export default function Home() {
                 {bookingToken && (
                   <a
                     href={`/turno/${bookingToken}`}
-                    className="mt-8 inline-flex h-12 items-center rounded-full bg-white px-7 font-medium text-[var(--brand)]"
+                    className="mt-8 inline-flex h-12 w-full items-center justify-center rounded-full bg-white px-5 text-center font-medium text-[var(--brand)] sm:w-auto sm:px-7"
                   >
                     Administrar mi turno
                   </a>
