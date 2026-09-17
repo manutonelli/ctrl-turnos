@@ -7,6 +7,6 @@
     "directory": "dist/client"
   },
   "vars": {
-    "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbwBF2u0b55Aj0ZPclbrJjAZ8xBEeaf4imeIQbGCfg5MS16_R_GkT2aaRl8zLRAWAPln/exec"
+    "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbyY1QHGCl7RvgVIg93TdJlQ26oMFEIeKQ7vsCFu_LqC5-Lkfp9fRU5V2tLYqv88_9Ry/exec"
   }
 }
