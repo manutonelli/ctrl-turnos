@@ -1,46 +1,777 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, LockKeyhole, Plus, Save, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  LockKeyhole,
+  Plus,
+  Save,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type Schedule = { weekday: number; label: string; active: boolean; start: string; end: string; interval: number };
-type Booking = { id: string; token: string; date: string; time: string; name: string; whatsapp: string; status: string };
+type Schedule = {
+  weekday: number;
+  label: string;
+  active: boolean;
+  start: string;
+  end: string;
+  interval: number;
+};
+type Booking = {
+  id: string;
+  token: string;
+  date: string;
+  time: string;
+  name: string;
+  whatsapp: string;
+  status: string;
+};
+type Service = {
+  id: string;
+  name: string;
+  duration: number;
+  price: string;
+  active: boolean;
+};
+type Business = {
+  name: string;
+  address: string;
+  whatsapp: string;
+  instagram: string;
+  welcome: string;
+  advanceWeeks: string;
+  minAdvanceHours: string;
+  cancelHours: string;
+};
 const labels = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-const defaults: Schedule[] = labels.map((label, index) => ({ weekday: index + 1, label, active: true, start: "09:00", end: "13:00", interval: 30 }));
-const options = Array.from({ length: 13 }, (_, i) => `${String(8 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
+const defaults: Schedule[] = labels.map((label, index) => ({
+  weekday: index + 1,
+  label,
+  active: true,
+  start: "09:00",
+  end: "13:00",
+  interval: 30,
+}));
+const options = Array.from(
+  { length: 13 },
+  (_, i) =>
+    `${String(8 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`,
+);
 const gridTimes = options.slice(0, -1);
-function iso(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
-function minutes(value: string) { const [h, m] = value.split(":").map(Number); return h * 60 + m; }
-function normalize(value: unknown) { if (!Array.isArray(value)) return defaults; const rows = value.filter((row): row is Schedule => Boolean(row && Number((row as Schedule).weekday) >= 1 && Number((row as Schedule).weekday) <= 5 && /^\d{2}:\d{2}$/.test(String((row as Schedule).start)))); return rows.length === 5 ? rows.sort((a, b) => a.weekday - b.weekday).map((row, i) => ({ ...row, label: labels[i] })) : defaults; }
-function monday(offset: number) { const date = new Date(); date.setHours(12, 0, 0, 0); const day = date.getDay() || 7; date.setDate(date.getDate() - day + 1 + offset * 7); return date; }
-function pretty(date: Date) { return new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long" }).format(date); }
+function iso(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+function minutes(value: string) {
+  const [h, m] = value.split(":").map(Number);
+  return h * 60 + m;
+}
+function normalize(value: unknown) {
+  if (!Array.isArray(value)) return defaults;
+  const rows = value.filter((row): row is Schedule =>
+    Boolean(
+      row &&
+      Number((row as Schedule).weekday) >= 1 &&
+      Number((row as Schedule).weekday) <= 5 &&
+      /^\d{2}:\d{2}$/.test(String((row as Schedule).start)),
+    ),
+  );
+  return rows.length === 5
+    ? rows
+        .sort((a, b) => a.weekday - b.weekday)
+        .map((row, i) => ({ ...row, label: labels[i] }))
+    : defaults;
+}
+function monday(offset: number) {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  const day = date.getDay() || 7;
+  date.setDate(date.getDate() - day + 1 + offset * 7);
+  return date;
+}
+function pretty(date: Date) {
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "numeric",
+    month: "long",
+  }).format(date);
+}
 
 export function AdminPanel() {
-  const [password, setPassword] = useState(""); const [schedule, setSchedule] = useState<Schedule[]>([]); const [bookings, setBookings] = useState<Booking[]>([]); const [blocked, setBlocked] = useState<string[]>([]);
-  const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [loading, setLoading] = useState(false); const [weekOffset, setWeekOffset] = useState(0); const [selected, setSelected] = useState<Booking | null>(null); const [moving, setMoving] = useState(false); const [mobileDay, setMobileDay] = useState(0);
+  const [password, setPassword] = useState("");
+  const [schedule, setSchedule] = useState<Schedule[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [blocked, setBlocked] = useState<string[]>([]);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selected, setSelected] = useState<Booking | null>(null);
+  const [moving, setMoving] = useState(false);
+  const [mobileDay, setMobileDay] = useState(0);
   const [updating, setUpdating] = useState(false);
-  const week = useMemo(() => { const start = monday(weekOffset); return Array.from({ length: 5 }, (_, i) => { const date = new Date(start); date.setDate(start.getDate() + i); return date; }); }, [weekOffset]);
-  async function call(action: string, extra: Record<string, unknown> = {}) { const response = await fetch("/api/turnos", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, adminPassword: password, ...extra }) }); const text = await response.text(); if (!text.trim()) throw new Error("El servidor respondió vacío."); let data; try { data = JSON.parse(text); } catch { throw new Error("El servidor devolvió una respuesta inválida."); } if (!data.ok) throw new Error(data.error || "No pudimos completar la acción"); return data; }
-  async function login(event: FormEvent) { event.preventDefault(); setError(""); setLoading(true); try { const data = await call("adminOverview"); setSchedule(normalize(data.schedule)); setBookings(data.bookings || []); setBlocked(data.blockedDates || []); } catch (reason) { setError(reason instanceof Error ? reason.message : "No pudimos ingresar"); } finally { setLoading(false); } }
-  function bookingAt(date: string, time: string) { return bookings.find(item => item.date === date && item.time === time); }
-  function openAt(dayIndex: number, time: string) { const rule = schedule[dayIndex]; return Boolean(rule?.active && minutes(time) >= minutes(rule.start) && minutes(time) < minutes(rule.end)); }
-  function futureSlot(date: string, time: string) { return new Date(`${date}T${time}:00`).getTime() >= Date.now() + 60 * 60 * 1000; }
-  async function moveTo(date: string, time: string) { if (!selected || !moving || updating) return; setError(""); setMessage(`Moviendo el turno a ${date} a las ${time}…`); setUpdating(true); try { const data = await call("reschedule", { token: selected.token, date, time }); setBookings(current => current.map(item => item.id === selected.id ? { ...item, ...data.booking } : item)); setSelected(current => current ? { ...current, ...data.booking } : current); setMoving(false); setMessage("Turno reprogramado correctamente."); } catch (reason) { setMessage(""); setError(reason instanceof Error ? reason.message : "No pudimos reprogramar"); } finally { setUpdating(false); } }
-  async function cancel() { if (!selected || !confirm(`¿Cancelar el turno de ${selected.name}?`)) return; setError(""); try { await call("cancel", { token: selected.token }); setBookings(current => current.filter(item => item.id !== selected.id)); setSelected(null); setMoving(false); setMessage("Turno cancelado."); } catch (reason) { setError(reason instanceof Error ? reason.message : "No pudimos cancelar"); } }
-  function startMoving() { setError(""); setMessage(""); setMoving(true); window.setTimeout(() => document.getElementById("admin-calendar")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }
-  async function saveSchedule() { try { await call("adminSaveSchedule", { schedule }); setMessage("Horarios guardados."); } catch (reason) { setError(reason instanceof Error ? reason.message : "No pudimos guardar"); } }
-  async function blockDate(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = event.currentTarget; const date = String(new FormData(form).get("date")); try { const data = await call("adminBlock", { date }); setBlocked(data.blockedDates); form.reset(); setMessage("Fecha bloqueada."); } catch (reason) { setError(reason instanceof Error ? reason.message : "No pudimos bloquear la fecha"); } }
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const week = useMemo(() => {
+    const start = monday(weekOffset);
+    return Array.from({ length: 5 }, (_, i) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      return date;
+    });
+  }, [weekOffset]);
+  async function call(action: string, extra: Record<string, unknown> = {}) {
+    const response = await fetch("/api/turnos", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action, adminPassword: password, ...extra }),
+    });
+    const text = await response.text();
+    if (!text.trim()) throw new Error("El servidor respondió vacío.");
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("El servidor devolvió una respuesta inválida.");
+    }
+    if (!data.ok)
+      throw new Error(data.error || "No pudimos completar la acción");
+    return data;
+  }
+  async function login(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const data = await call("adminOverview");
+      setSchedule(normalize(data.schedule));
+      setBookings(data.bookings || []);
+      setBlocked(data.blockedDates || []);
+      setBusiness(data.business || null);
+      setServices(data.services || []);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "No pudimos ingresar",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+  function bookingAt(date: string, time: string) {
+    return bookings.find((item) => item.date === date && item.time === time);
+  }
+  function openAt(dayIndex: number, time: string) {
+    const rule = schedule[dayIndex];
+    return Boolean(
+      rule?.active &&
+      minutes(time) >= minutes(rule.start) &&
+      minutes(time) < minutes(rule.end),
+    );
+  }
+  function futureSlot(date: string, time: string) {
+    return (
+      new Date(`${date}T${time}:00`).getTime() >= Date.now() + 60 * 60 * 1000
+    );
+  }
+  async function moveTo(date: string, time: string) {
+    if (!selected || !moving || updating) return;
+    setError("");
+    setMessage(`Moviendo el turno a ${date} a las ${time}…`);
+    setUpdating(true);
+    try {
+      const data = await call("reschedule", {
+        token: selected.token,
+        date,
+        time,
+      });
+      setBookings((current) =>
+        current.map((item) =>
+          item.id === selected.id ? { ...item, ...data.booking } : item,
+        ),
+      );
+      setSelected((current) =>
+        current ? { ...current, ...data.booking } : current,
+      );
+      setMoving(false);
+      setMessage("Turno reprogramado correctamente.");
+    } catch (reason) {
+      setMessage("");
+      setError(
+        reason instanceof Error ? reason.message : "No pudimos reprogramar",
+      );
+    } finally {
+      setUpdating(false);
+    }
+  }
+  async function cancel() {
+    if (!selected || !confirm(`¿Cancelar el turno de ${selected.name}?`))
+      return;
+    setError("");
+    try {
+      await call("cancel", { token: selected.token });
+      setBookings((current) =>
+        current.filter((item) => item.id !== selected.id),
+      );
+      setSelected(null);
+      setMoving(false);
+      setMessage("Turno cancelado.");
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "No pudimos cancelar",
+      );
+    }
+  }
+  function startMoving() {
+    setError("");
+    setMessage("");
+    setMoving(true);
+    window.setTimeout(
+      () =>
+        document
+          .getElementById("admin-calendar")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      50,
+    );
+  }
+  async function saveSchedule() {
+    try {
+      await call("adminSaveSchedule", { schedule });
+      setMessage("Horarios guardados.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No pudimos guardar");
+    }
+  }
+  async function blockDate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const date = String(new FormData(form).get("date"));
+    try {
+      const data = await call("adminBlock", { date });
+      setBlocked(data.blockedDates);
+      form.reset();
+      setMessage("Fecha bloqueada.");
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No pudimos bloquear la fecha",
+      );
+    }
+  }
+  async function saveBusiness() {
+    if (!business) return;
+    try {
+      const data = await call("adminSaveBusiness", { business });
+      setBusiness(data.business);
+      setMessage("Datos del negocio guardados.");
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No pudimos guardar el negocio",
+      );
+    }
+  }
+  async function saveServices() {
+    try {
+      const data = await call("adminSaveServices", { services });
+      setServices(data.services);
+      setMessage("Servicios guardados.");
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No pudimos guardar los servicios",
+      );
+    }
+  }
 
-  if (!schedule.length) return <section className="mx-auto max-w-[430px] px-5 py-14"><div className="mb-10 flex items-center gap-3 font-mono text-[19px] font-medium tracking-[-.03em]"><span className="grid h-[38px] w-[38px] place-items-center rounded-lg bg-[var(--brand)] text-white shadow-[inset_0_-3px_0_rgba(255,255,255,.18)]">^</span>ctrl.turnos</div><h1 className="text-[36px] font-medium tracking-[-.025em]">Administración</h1><p className="mt-3 text-[var(--text-muted)]">Acceso exclusivo del negocio.</p><form className="mt-8 rounded-[28px] bg-white p-7 shadow-[0_18px_50px_rgba(16,47,85,.07)]" onSubmit={login}><LockKeyhole size={20} className="text-[var(--brand)]" /><label className="mt-6 block text-sm font-medium text-[var(--text-muted)]">Clave<Input type="password" required value={password} onChange={event => setPassword(event.target.value)} className="mt-2 h-13 rounded-2xl border-[var(--border)] tracking-[.18em]" /></label>{error && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}<Button disabled={loading} className="mt-5 h-13 w-full rounded-full bg-[var(--brand)]">{loading ? "Ingresando…" : "Ingresar"}</Button></form></section>;
+  if (!schedule.length)
+    return (
+      <section className="mx-auto max-w-[430px] px-5 py-14">
+        <div className="mb-10 flex items-center gap-3 font-mono text-[19px] font-medium tracking-[-.03em]">
+          <span className="grid h-[38px] w-[38px] place-items-center rounded-lg bg-[var(--brand)] text-white shadow-[inset_0_-3px_0_rgba(255,255,255,.18)]">
+            ^
+          </span>
+          ctrl.turnos
+        </div>
+        <h1 className="text-[36px] font-medium tracking-[-.025em]">
+          Administración
+        </h1>
+        <p className="mt-3 text-[var(--text-muted)]">
+          Acceso exclusivo del negocio.
+        </p>
+        <form
+          className="mt-8 rounded-[28px] bg-white p-7 shadow-[0_18px_50px_rgba(16,47,85,.07)]"
+          onSubmit={login}
+        >
+          <LockKeyhole size={20} className="text-[var(--brand)]" />
+          <label className="mt-6 block text-sm font-medium text-[var(--text-muted)]">
+            Clave
+            <Input
+              type="password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="mt-2 h-13 rounded-2xl border-[var(--border)] tracking-[.18em]"
+            />
+          </label>
+          {error && (
+            <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          <Button
+            disabled={loading}
+            className="mt-5 h-13 w-full rounded-full bg-[var(--brand)]"
+          >
+            {loading ? "Ingresando…" : "Ingresar"}
+          </Button>
+        </form>
+      </section>
+    );
 
-  return <section className="mx-auto max-w-[1180px] px-5 pb-20 pt-8 sm:px-6">{(error || message) && <div role="status" className={`fixed bottom-5 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 items-center justify-between gap-3 rounded-2xl p-4 text-sm shadow-xl ${error ? "bg-[#9a4046] text-white" : "bg-[var(--brand)] text-white"}`}><span>{updating && <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white align-[-3px]" />}{error || message}</span><button onClick={() => { setError(""); setMessage(""); }}><X size={16} /></button></div>}
-    <div id="admin-calendar" className="scroll-mt-5 flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-[36px] font-medium tracking-[-.025em]">Agenda</h1><p className="mt-2 text-[var(--text-muted)]">Semana del {pretty(week[0])} al {pretty(week[4])}</p></div><div className="flex gap-2"><button onClick={() => setWeekOffset(value => value - 1)} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--border)] bg-white"><ChevronLeft /></button><button onClick={() => setWeekOffset(value => value + 1)} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--border)] bg-white"><ChevronRight /></button></div></div>
-    {moving && selected && <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[20px] bg-[var(--selected-bg)] px-5 py-4"><p>Elegí el nuevo horario para <strong>{selected.name}</strong>. Solo aparecen como destino los horarios futuros.</p><button onClick={() => setMoving(false)} className="text-sm font-medium">Cancelar</button></div>}
-    <div className="mt-8 hidden rounded-[28px] bg-white p-[22px] shadow-[0_18px_50px_rgba(16,47,85,.07)] sm:block"><div className="grid grid-cols-[58px_repeat(5,minmax(0,1fr))] gap-1.5"><div />{week.map((date, i) => <div key={iso(date)} className={`pb-3 text-center ${schedule[i]?.active ? "text-[var(--brand)]" : "text-[#b6c1d0]"}`}><span className="block text-[11px] font-medium tracking-[.09em] text-[var(--text-faint)]">{labels[i].slice(0,3).toUpperCase()}</span><strong className="text-[17px] font-medium">{date.getDate()}</strong></div>)}{gridTimes.map(time => <div key={time} className="contents"><div className="pr-2 pt-3 text-right text-xs font-medium text-[var(--text-faint)]">{time}</div>{week.map((date, i) => { const dateKey = iso(date); const booking = bookingAt(dateKey, time); const open = openAt(i, time) && !blocked.includes(dateKey); const target = open && futureSlot(dateKey, time); return <button key={`${dateKey}-${time}`} disabled={updating || (!booking && (!target || !moving))} onClick={() => booking ? (setSelected(booking), setMoving(false)) : moveTo(dateKey, time)} className={`min-h-10 overflow-hidden rounded-xl px-2 py-1.5 text-left text-xs font-medium leading-tight transition ${booking ? `bg-[var(--brand)] text-white ${selected?.id === booking.id ? "shadow-[0_0_0_3px_#b9cbe2]" : ""}` : open ? moving && target ? "bg-[var(--selected-bg)] text-[var(--brand)] shadow-[inset_0_0_0_1px_var(--brand)]" : "bg-[var(--surface-2)] shadow-[inset_0_0_0_1px_var(--rail)]" : "bg-[var(--rail)]"}`}>{booking?.name || (moving && target ? "Mover acá" : "")}</button>; })}</div>)}</div><div className="mt-5 flex flex-wrap gap-5 border-t border-[var(--divider)] pt-4 text-[13px] text-[var(--text-faint)]"><span><i className="mr-2 inline-block h-3 w-3 rounded-[5px] bg-[var(--brand)]" />Turno confirmado</span><span><i className="mr-2 inline-block h-3 w-3 rounded-[5px] border bg-[var(--surface-2)]" />Libre</span><span><i className="mr-2 inline-block h-3 w-3 rounded-[5px] bg-[var(--rail)]" />Fuera de horario</span></div></div>
-    <div className="mt-7 sm:hidden"><div className="flex gap-2">{week.map((date, i) => <button key={iso(date)} onClick={() => setMobileDay(i)} className={`relative flex-1 rounded-2xl py-3 text-center ${mobileDay === i ? "bg-[var(--brand)] text-white" : "bg-white"}`}><span className="block text-[10px]">{labels[i].slice(0,3).toUpperCase()}</span><strong>{date.getDate()}</strong>{bookings.some(item => item.date === iso(date)) && <i className={`absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full ${mobileDay === i ? "bg-white" : "bg-[var(--brand)]"}`} />}</button>)}</div><div className="mt-4 rounded-[26px] bg-white p-4">{gridTimes.filter(time => openAt(mobileDay, time)).map(time => { const date = iso(week[mobileDay]); const booking = bookingAt(date, time); return <button key={time} onClick={() => booking ? setSelected(booking) : moveTo(date, time)} className="flex min-h-14 w-full items-center border-b border-[var(--divider)] text-left last:border-0"><span className="w-[58px] text-sm text-[var(--text-faint)]">{time}</span><span className={`flex-1 ${booking ? "font-medium" : "text-[#b6c1d0]"}`}>{booking?.name || "Libre"}</span>{booking ? <ChevronRight size={18} /> : moving ? <Plus size={18} /> : null}</button>; })}</div></div>
-    {selected && <div className="mt-6 flex flex-wrap items-center justify-between gap-5 rounded-[24px] bg-white px-7 py-6"><div><p className="text-sm text-[var(--text-faint)]">{selected.date} · {selected.time}</p><h2 className="mt-1 text-[22px] font-medium">{selected.name}</h2><p className="text-[15px] text-[var(--text-muted)]">WhatsApp {selected.whatsapp}</p></div><div className="flex flex-wrap gap-3"><Button variant="outline" onClick={startMoving} className="rounded-full border-[var(--border)] px-6">Reprogramar</Button><button onClick={cancel} className="px-3 font-medium text-[#9a4046]">Cancelar turno</button></div></div>}
-    <div className="mt-12 grid gap-6 lg:grid-cols-2"><div className="rounded-[28px] bg-white p-6 sm:p-8"><h2 className="text-xl font-medium">Horarios de atención</h2><p className="mt-1 text-sm text-[var(--text-faint)]">Turnos cada 30 minutos</p><div className="mt-6 space-y-3">{schedule.map((item, index) => <div key={item.weekday} className={`flex flex-wrap items-center gap-3 rounded-[18px] px-4 py-3 ${item.active ? "bg-[var(--surface-2)]" : "bg-[#fafbfc]"}`}><button type="button" aria-label={`Activar ${item.label}`} onClick={() => setSchedule(current => current.map((row, i) => i === index ? { ...row, active: !row.active } : row))} className={`flex h-[26px] w-11 items-center rounded-full p-[3px] ${item.active ? "justify-end bg-[var(--brand)]" : "justify-start bg-[#cfd8e3]"}`}><i className="h-5 w-5 rounded-full bg-white" /></button><span className="min-w-[85px] flex-1 font-medium">{item.label}</span><select disabled={!item.active} value={item.start} onChange={e => setSchedule(current => current.map((row, i) => i === index ? { ...row, start: e.target.value } : row))} className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm disabled:text-[#a3b0c0]">{options.map(option => <option key={option}>{option}</option>)}</select><span className="text-sm text-[var(--text-faint)]">a</span><select disabled={!item.active} value={item.end} onChange={e => setSchedule(current => current.map((row, i) => i === index ? { ...row, end: e.target.value } : row))} className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm disabled:text-[#a3b0c0]">{options.map(option => <option key={option}>{option}</option>)}</select></div>)}</div><Button onClick={saveSchedule} className="mt-6 h-12 w-full rounded-full bg-[var(--brand)]"><Save />Guardar horarios</Button></div><div className="rounded-[28px] bg-white p-6 sm:p-8"><h2 className="text-xl font-medium">Fechas bloqueadas</h2><p className="mt-1 text-sm text-[var(--text-faint)]">Feriados, vacaciones o días sin atención</p><form onSubmit={blockDate} className="mt-6 flex gap-2"><Input name="date" type="date" required className="h-11 rounded-xl" /><Button className="h-11 rounded-full bg-[var(--brand)]">Bloquear</Button></form><div className="mt-5 flex flex-wrap gap-2">{blocked.map(date => <button key={date} onClick={async () => { const data = await call("adminUnblock", { date }); setBlocked(data.blockedDates); }} className="rounded-full bg-[var(--surface-2)] px-3 py-2 text-sm">{date} ×</button>)}</div></div></div>
-  </section>;
+  return (
+    <section className="mx-auto max-w-[1180px] px-5 pb-20 pt-8 sm:px-6">
+      {(error || message) && (
+        <div
+          role="status"
+          className={`fixed bottom-5 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 items-center justify-between gap-3 rounded-2xl p-4 text-sm shadow-xl ${error ? "bg-[#9a4046] text-white" : "bg-[var(--brand)] text-white"}`}
+        >
+          <span>
+            {updating && (
+              <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white align-[-3px]" />
+            )}
+            {error || message}
+          </span>
+          <button
+            onClick={() => {
+              setError("");
+              setMessage("");
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      <div
+        id="admin-calendar"
+        className="scroll-mt-5 flex flex-wrap items-end justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-[36px] font-medium tracking-[-.025em]">Agenda</h1>
+          <p className="mt-2 text-[var(--text-muted)]">
+            Semana del {pretty(week[0])} al {pretty(week[4])}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setWeekOffset((value) => value - 1)}
+            className="grid h-11 w-11 place-items-center rounded-full border border-[var(--border)] bg-white"
+          >
+            <ChevronLeft />
+          </button>
+          <button
+            onClick={() => setWeekOffset((value) => value + 1)}
+            className="grid h-11 w-11 place-items-center rounded-full border border-[var(--border)] bg-white"
+          >
+            <ChevronRight />
+          </button>
+        </div>
+      </div>
+      {moving && selected && (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[20px] bg-[var(--selected-bg)] px-5 py-4">
+          <p>
+            Elegí el nuevo horario para <strong>{selected.name}</strong>. Solo
+            aparecen como destino los horarios futuros.
+          </p>
+          <button
+            onClick={() => setMoving(false)}
+            className="text-sm font-medium"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+      <div className="mt-8 hidden rounded-[28px] bg-white p-[22px] shadow-[0_18px_50px_rgba(16,47,85,.07)] sm:block">
+        <div className="grid grid-cols-[58px_repeat(5,minmax(0,1fr))] gap-1.5">
+          <div />
+          {week.map((date, i) => (
+            <div
+              key={iso(date)}
+              className={`pb-3 text-center ${schedule[i]?.active ? "text-[var(--brand)]" : "text-[#b6c1d0]"}`}
+            >
+              <span className="block text-[11px] font-medium tracking-[.09em] text-[var(--text-faint)]">
+                {labels[i].slice(0, 3).toUpperCase()}
+              </span>
+              <strong className="text-[17px] font-medium">
+                {date.getDate()}
+              </strong>
+            </div>
+          ))}
+          {gridTimes.map((time) => (
+            <div key={time} className="contents">
+              <div className="pr-2 pt-3 text-right text-xs font-medium text-[var(--text-faint)]">
+                {time}
+              </div>
+              {week.map((date, i) => {
+                const dateKey = iso(date);
+                const booking = bookingAt(dateKey, time);
+                const open = openAt(i, time) && !blocked.includes(dateKey);
+                const target = open && futureSlot(dateKey, time);
+                return (
+                  <button
+                    key={`${dateKey}-${time}`}
+                    disabled={updating || (!booking && (!target || !moving))}
+                    onClick={() =>
+                      booking
+                        ? (setSelected(booking), setMoving(false))
+                        : moveTo(dateKey, time)
+                    }
+                    className={`min-h-10 overflow-hidden rounded-xl px-2 py-1.5 text-left text-xs font-medium leading-tight transition ${booking ? `bg-[var(--brand)] text-white ${selected?.id === booking.id ? "shadow-[0_0_0_3px_#b9cbe2]" : ""}` : open ? (moving && target ? "bg-[var(--selected-bg)] text-[var(--brand)] shadow-[inset_0_0_0_1px_var(--brand)]" : "bg-[var(--surface-2)] shadow-[inset_0_0_0_1px_var(--rail)]") : "bg-[var(--rail)]"}`}
+                  >
+                    {booking?.name || (moving && target ? "Mover acá" : "")}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 flex flex-wrap gap-5 border-t border-[var(--divider)] pt-4 text-[13px] text-[var(--text-faint)]">
+          <span>
+            <i className="mr-2 inline-block h-3 w-3 rounded-[5px] bg-[var(--brand)]" />
+            Turno confirmado
+          </span>
+          <span>
+            <i className="mr-2 inline-block h-3 w-3 rounded-[5px] border bg-[var(--surface-2)]" />
+            Libre
+          </span>
+          <span>
+            <i className="mr-2 inline-block h-3 w-3 rounded-[5px] bg-[var(--rail)]" />
+            Fuera de horario
+          </span>
+        </div>
+      </div>
+      <div className="mt-7 sm:hidden">
+        <div className="flex gap-2">
+          {week.map((date, i) => (
+            <button
+              key={iso(date)}
+              onClick={() => setMobileDay(i)}
+              className={`relative flex-1 rounded-2xl py-3 text-center ${mobileDay === i ? "bg-[var(--brand)] text-white" : "bg-white"}`}
+            >
+              <span className="block text-[10px]">
+                {labels[i].slice(0, 3).toUpperCase()}
+              </span>
+              <strong>{date.getDate()}</strong>
+              {bookings.some((item) => item.date === iso(date)) && (
+                <i
+                  className={`absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full ${mobileDay === i ? "bg-white" : "bg-[var(--brand)]"}`}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="mt-4 rounded-[26px] bg-white p-4">
+          {gridTimes
+            .filter((time) => openAt(mobileDay, time))
+            .map((time) => {
+              const date = iso(week[mobileDay]);
+              const booking = bookingAt(date, time);
+              return (
+                <button
+                  key={time}
+                  onClick={() =>
+                    booking ? setSelected(booking) : moveTo(date, time)
+                  }
+                  className="flex min-h-14 w-full items-center border-b border-[var(--divider)] text-left last:border-0"
+                >
+                  <span className="w-[58px] text-sm text-[var(--text-faint)]">
+                    {time}
+                  </span>
+                  <span
+                    className={`flex-1 ${booking ? "font-medium" : "text-[#b6c1d0]"}`}
+                  >
+                    {booking?.name || "Libre"}
+                  </span>
+                  {booking ? (
+                    <ChevronRight size={18} />
+                  ) : moving ? (
+                    <Plus size={18} />
+                  ) : null}
+                </button>
+              );
+            })}
+        </div>
+      </div>
+      {selected && (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-5 rounded-[24px] bg-white px-7 py-6">
+          <div>
+            <p className="text-sm text-[var(--text-faint)]">
+              {selected.date} · {selected.time}
+            </p>
+            <h2 className="mt-1 text-[22px] font-medium">{selected.name}</h2>
+            <p className="text-[15px] text-[var(--text-muted)]">
+              WhatsApp {selected.whatsapp}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="outline"
+              onClick={startMoving}
+              className="rounded-full border-[var(--border)] px-6"
+            >
+              Reprogramar
+            </Button>
+            <button
+              onClick={cancel}
+              className="px-3 font-medium text-[#9a4046]"
+            >
+              Cancelar turno
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="mt-12 grid gap-6 lg:grid-cols-2">
+        <div className="rounded-[28px] bg-white p-6 sm:p-8">
+          <h2 className="text-xl font-medium">Horarios de atención</h2>
+          <p className="mt-1 text-sm text-[var(--text-faint)]">
+            Turnos cada 30 minutos
+          </p>
+          <div className="mt-6 space-y-3">
+            {schedule.map((item, index) => (
+              <div
+                key={item.weekday}
+                className={`flex flex-wrap items-center gap-3 rounded-[18px] px-4 py-3 ${item.active ? "bg-[var(--surface-2)]" : "bg-[#fafbfc]"}`}
+              >
+                <button
+                  type="button"
+                  aria-label={`Activar ${item.label}`}
+                  onClick={() =>
+                    setSchedule((current) =>
+                      current.map((row, i) =>
+                        i === index ? { ...row, active: !row.active } : row,
+                      ),
+                    )
+                  }
+                  className={`flex h-[26px] w-11 items-center rounded-full p-[3px] ${item.active ? "justify-end bg-[var(--brand)]" : "justify-start bg-[#cfd8e3]"}`}
+                >
+                  <i className="h-5 w-5 rounded-full bg-white" />
+                </button>
+                <span className="min-w-[85px] flex-1 font-medium">
+                  {item.label}
+                </span>
+                <select
+                  disabled={!item.active}
+                  value={item.start}
+                  onChange={(e) =>
+                    setSchedule((current) =>
+                      current.map((row, i) =>
+                        i === index ? { ...row, start: e.target.value } : row,
+                      ),
+                    )
+                  }
+                  className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm disabled:text-[#a3b0c0]"
+                >
+                  {options.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
+                </select>
+                <span className="text-sm text-[var(--text-faint)]">a</span>
+                <select
+                  disabled={!item.active}
+                  value={item.end}
+                  onChange={(e) =>
+                    setSchedule((current) =>
+                      current.map((row, i) =>
+                        i === index ? { ...row, end: e.target.value } : row,
+                      ),
+                    )
+                  }
+                  className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm disabled:text-[#a3b0c0]"
+                >
+                  {options.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+          <Button
+            onClick={saveSchedule}
+            className="mt-6 h-12 w-full rounded-full bg-[var(--brand)]"
+          >
+            <Save />
+            Guardar horarios
+          </Button>
+        </div>
+        <div className="rounded-[28px] bg-white p-6 sm:p-8">
+          <h2 className="text-xl font-medium">Fechas bloqueadas</h2>
+          <p className="mt-1 text-sm text-[var(--text-faint)]">
+            Feriados, vacaciones o días sin atención
+          </p>
+          <form onSubmit={blockDate} className="mt-6 flex gap-2">
+            <Input
+              name="date"
+              type="date"
+              required
+              className="h-11 rounded-xl"
+            />
+            <Button className="h-11 rounded-full bg-[var(--brand)]">
+              Bloquear
+            </Button>
+          </form>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {blocked.map((date) => (
+              <button
+                key={date}
+                onClick={async () => {
+                  const data = await call("adminUnblock", { date });
+                  setBlocked(data.blockedDates);
+                }}
+                className="rounded-full bg-[var(--surface-2)] px-3 py-2 text-sm"
+              >
+                {date} ×
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        {business && (
+          <div className="rounded-[28px] bg-white p-6 sm:p-8">
+            <h2 className="text-xl font-medium">Datos del negocio</h2>
+            <div className="mt-5 grid gap-4">
+              {[
+                ["name", "Nombre"],
+                ["welcome", "Título de bienvenida"],
+                ["address", "Dirección o modalidad"],
+                ["whatsapp", "WhatsApp"],
+                ["instagram", "Instagram"],
+              ].map(([key, label]) => (
+                <label
+                  key={key}
+                  className="text-sm font-medium text-[var(--text-muted)]"
+                >
+                  {label}
+                  <Input
+                    value={business[key as keyof Business]}
+                    onChange={(event) =>
+                      setBusiness((current) =>
+                        current
+                          ? { ...current, [key]: event.target.value }
+                          : current,
+                      )
+                    }
+                    className="mt-2 rounded-xl"
+                  />
+                </label>
+              ))}
+            </div>
+            <Button
+              onClick={saveBusiness}
+              className="mt-6 h-12 w-full rounded-full bg-[var(--brand)]"
+            >
+              <Save />
+              Guardar negocio
+            </Button>
+          </div>
+        )}
+        <div className="rounded-[28px] bg-white p-6 sm:p-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-medium">Servicios</h2>
+            <button
+              onClick={() =>
+                setServices((current) => [
+                  ...current,
+                  {
+                    id: `servicio-${Date.now()}`,
+                    name: "Nuevo servicio",
+                    duration: 30,
+                    price: "",
+                    active: true,
+                  },
+                ])
+              }
+              className="rounded-full border border-[var(--border)] px-3 py-2 text-sm"
+            >
+              + Agregar
+            </button>
+          </div>
+          <div className="mt-5 space-y-3">
+            {services.map((service, index) => (
+              <div
+                key={service.id}
+                className="grid grid-cols-[1fr_90px] gap-2 rounded-2xl bg-[var(--surface-2)] p-3"
+              >
+                <Input
+                  value={service.name}
+                  onChange={(event) =>
+                    setServices((current) =>
+                      current.map((item, i) =>
+                        i === index
+                          ? { ...item, name: event.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                  placeholder="Nombre"
+                />
+                <select
+                  value={service.duration}
+                  onChange={(event) =>
+                    setServices((current) =>
+                      current.map((item, i) =>
+                        i === index
+                          ? { ...item, duration: Number(event.target.value) }
+                          : item,
+                      ),
+                    )
+                  }
+                  className="rounded-xl border border-[var(--border)] bg-white px-2"
+                >
+                  {[30, 60, 90, 120].map((value) => (
+                    <option key={value} value={value}>
+                      {value} min
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  value={service.price}
+                  onChange={(event) =>
+                    setServices((current) =>
+                      current.map((item, i) =>
+                        i === index
+                          ? { ...item, price: event.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                  placeholder="Precio opcional"
+                />
+                <button
+                  onClick={() =>
+                    setServices((current) =>
+                      current.filter((_, i) => i !== index),
+                    )
+                  }
+                  className="text-sm text-[#9a4046]"
+                >
+                  Eliminar
+                </button>
+              </div>
+            ))}
+          </div>
+          <Button
+            onClick={saveServices}
+            className="mt-6 h-12 w-full rounded-full bg-[var(--brand)]"
+          >
+            <Save />
+            Guardar servicios
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
 }
