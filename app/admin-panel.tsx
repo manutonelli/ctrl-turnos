@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LockKeyhole,
+  MessageCircle,
   Plus,
   Save,
   X,
@@ -28,6 +29,7 @@ type Booking = {
   name: string;
   whatsapp: string;
   status: string;
+  service?: string;
 };
 type Service = {
   id: string;
@@ -98,6 +100,13 @@ function pretty(date: Date) {
   }).format(date);
 }
 
+function whatsappNumber(value: string) {
+  let digits = String(value || "").replace(/\D/g, "");
+  if (digits.startsWith("54")) return digits;
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  return `549${digits}`;
+}
+
 export function AdminPanel() {
   const [password, setPassword] = useState("");
   const [schedule, setSchedule] = useState<Schedule[]>([]);
@@ -113,6 +122,29 @@ export function AdminPanel() {
   const [updating, setUpdating] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
+
+  function sendReminder(booking: Booking) {
+    const appointment = new Date(`${booking.date}T12:00:00`);
+    const formattedDate = new Intl.DateTimeFormat("es-AR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }).format(appointment);
+    const manageUrl = `${window.location.origin}/turno/${booking.token}`;
+    const text = [
+      `Hola, ${booking.name} 👋`,
+      `Te recordamos que tenés ${booking.service || "una consulta"} en ${business?.name || "nuestro negocio"} el ${formattedDate} a las ${booking.time}.`,
+      business?.address ? `Lugar: ${business.address}.` : "",
+      `Si necesitás reprogramar o cancelar, podés hacerlo desde acá: ${manageUrl}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    window.open(
+      `https://wa.me/${whatsappNumber(booking.whatsapp)}?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
   const week = useMemo(() => {
     const start = monday(weekOffset);
     return Array.from({ length: 5 }, (_, i) => {
@@ -517,6 +549,13 @@ export function AdminPanel() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={() => sendReminder(selected)}
+              className="rounded-full bg-[#25D366] px-6 text-white hover:bg-[#1fb85a]"
+            >
+              <MessageCircle size={17} />
+              Recordar por WhatsApp
+            </Button>
             <Button
               variant="outline"
               onClick={startMoving}
