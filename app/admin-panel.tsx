@@ -32,7 +32,11 @@ export function AdminPanel() {
 
   async function call(action: string, extra: Record<string, unknown> = {}) {
     const response = await fetch("/api/turnos", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, adminPassword: password, ...extra }) });
-    const data = await response.json();
+    const text = await response.text();
+    if (!text.trim()) throw new Error("El servidor respondió vacío. Esperá unos segundos y volvé a intentar.");
+    let data: { ok?: boolean; error?: string; [key: string]: unknown };
+    try { data = JSON.parse(text); }
+    catch { throw new Error("El servidor devolvió una respuesta inválida. Revisá el despliegue de Cloudflare."); }
     if (!data.ok) throw new Error(data.error || "No pudimos completar la acción");
     return data;
   }
