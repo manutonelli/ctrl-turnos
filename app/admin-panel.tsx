@@ -365,7 +365,7 @@ export function AdminPanel() {
     );
 
   return (
-    <section className="mx-auto max-w-[1180px] px-5 pb-20 pt-8 sm:px-6">
+    <section className="mx-auto max-w-[1180px] px-4 pb-16 pt-5 sm:px-6 sm:pb-20 sm:pt-8">
       {(error || message) && (
         <div
           role="status"
@@ -392,7 +392,9 @@ export function AdminPanel() {
         className="scroll-mt-5 flex flex-wrap items-end justify-between gap-4"
       >
         <div>
-          <h1 className="text-[36px] font-medium tracking-[-.025em]">Agenda</h1>
+          <h1 className="text-[30px] font-medium tracking-[-.025em] sm:text-[36px]">
+            Agenda
+          </h1>
           <p className="mt-2 text-[var(--text-muted)]">
             Semana del {pretty(week[0])} al {pretty(week[4])}
           </p>
@@ -538,7 +540,7 @@ export function AdminPanel() {
         </div>
       </div>
       {selected && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-5 rounded-[24px] bg-white px-7 py-6">
+        <div className="mt-6 flex flex-col items-stretch justify-between gap-5 rounded-[22px] bg-white px-5 py-5 sm:flex-row sm:items-center sm:rounded-[24px] sm:px-7 sm:py-6">
           <div>
             <p className="text-sm text-[var(--text-faint)]">
               {selected.date} · {selected.time}
@@ -548,10 +550,10 @@ export function AdminPanel() {
               WhatsApp {selected.whatsapp}
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
             <Button
               onClick={() => sendReminder(selected)}
-              className="rounded-full bg-[#25D366] px-6 text-white hover:bg-[#1fb85a]"
+              className="w-full rounded-full bg-[#25D366] px-5 text-white hover:bg-[#1fb85a] sm:w-auto sm:px-6"
             >
               <MessageCircle size={17} />
               Recordar por WhatsApp
@@ -559,13 +561,13 @@ export function AdminPanel() {
             <Button
               variant="outline"
               onClick={startMoving}
-              className="rounded-full border-[var(--border)] px-6"
+              className="w-full rounded-full border-[var(--border)] px-6 sm:w-auto"
             >
               Reprogramar
             </Button>
             <button
               onClick={cancel}
-              className="px-3 font-medium text-[#9a4046]"
+              className="min-h-10 w-full px-3 font-medium text-[#9a4046] sm:w-auto"
             >
               Cancelar turno
             </button>
@@ -582,7 +584,7 @@ export function AdminPanel() {
             {schedule.map((item, index) => (
               <div
                 key={item.weekday}
-                className={`flex flex-wrap items-center gap-3 rounded-[18px] px-4 py-3 ${item.active ? "bg-[var(--surface-2)]" : "bg-[#fafbfc]"}`}
+                className={`grid grid-cols-[auto_1fr] items-center gap-3 rounded-[18px] px-4 py-3 sm:flex sm:flex-wrap ${item.active ? "bg-[var(--surface-2)]" : "bg-[#fafbfc]"}`}
               >
                 <button
                   type="button"
@@ -611,13 +613,15 @@ export function AdminPanel() {
                       ),
                     )
                   }
-                  className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm disabled:text-[#a3b0c0]"
+                  className="min-w-0 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm disabled:text-[#a3b0c0] sm:min-w-fit"
                 >
                   {options.map((option) => (
                     <option key={option}>{option}</option>
                   ))}
                 </select>
-                <span className="text-sm text-[var(--text-faint)]">a</span>
+                <span className="hidden text-sm text-[var(--text-faint)] sm:inline">
+                  a
+                </span>
                 <select
                   disabled={!item.active}
                   value={item.end}
@@ -628,7 +632,7 @@ export function AdminPanel() {
                       ),
                     )
                   }
-                  className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm disabled:text-[#a3b0c0]"
+                  className="min-w-0 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm disabled:text-[#a3b0c0] sm:min-w-fit"
                 >
                   {options.map((option) => (
                     <option key={option}>{option}</option>
@@ -650,7 +654,10 @@ export function AdminPanel() {
           <p className="mt-1 text-sm text-[var(--text-faint)]">
             Feriados, vacaciones o días sin atención
           </p>
-          <form onSubmit={blockDate} className="mt-6 flex gap-2">
+          <form
+            onSubmit={blockDate}
+            className="mt-6 grid gap-2 sm:grid-cols-[1fr_auto]"
+          >
             <Input
               name="date"
               type="date"
