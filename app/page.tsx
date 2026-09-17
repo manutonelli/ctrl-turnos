@@ -109,6 +109,9 @@ export default function Home() {
   const [bookingToken, setBookingToken] = useState("");
   const [reprogramToken, setReprogramToken] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmationStatus, setConfirmationStatus] = useState<
+    "idle" | "pending" | "success" | "error"
+  >("idle");
   const [business, setBusiness] = useState<Business>({
     name: "AREA Estudio Contable",
     address: "Av. M. Cabral 3009, Saladillo",
@@ -193,6 +196,8 @@ export default function Home() {
     if (submitting) return;
     setError("");
     setSubmitting(true);
+    setConfirmationStatus("pending");
+    setStep("confirmed");
     const form = new FormData(event.currentTarget);
     try {
       const payload = reprogramToken
@@ -214,10 +219,12 @@ export default function Home() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
+        keepalive: true,
       });
       const data = await response.json();
       if (!data.ok) {
         setError(data.error || "No pudimos confirmar la consulta");
+        setConfirmationStatus("error");
         return;
       }
       setBookingToken(data.booking.token || reprogramToken);
@@ -226,11 +233,12 @@ export default function Home() {
         next.delete(`${day}|${time}`);
         return next;
       });
-      setStep("confirmed");
+      setConfirmationStatus("success");
     } catch {
       setError(
         "No pudimos confirmar la consulta. Revisá tu conexión e intentá nuevamente.",
       );
+      setConfirmationStatus("error");
     } finally {
       setSubmitting(false);
     }
@@ -495,24 +503,58 @@ export default function Home() {
         )}
         {step === "confirmed" && (
           <section className="pt-12 sm:pt-16">
-            <div className="rounded-[28px] bg-[var(--brand)] px-7 py-11 text-white sm:px-9">
-              <Check size={32} className="opacity-70" />
-              <h1 className="mt-6 text-[32px] font-medium tracking-[-.025em] sm:text-[34px]">
-                Consulta confirmada
-              </h1>
-              <p className="mt-3 max-w-xl text-[17px] leading-7 text-white/85">
-                Te esperamos el {selectedDay.label.toLowerCase()} a las {time}{" "}
-                en {business.address}.
-              </p>
-              {bookingToken && (
-                <a
-                  href={`/turno/${bookingToken}`}
-                  className="mt-8 inline-flex h-12 items-center rounded-full bg-white px-7 font-medium text-[var(--brand)]"
+            {confirmationStatus === "pending" && (
+              <div className="rounded-[28px] bg-[var(--brand)] px-7 py-11 text-white sm:px-9">
+                <LoaderCircle size={34} className="animate-spin opacity-80" />
+                <h1 className="mt-6 text-[32px] font-medium tracking-[-.025em] sm:text-[34px]">
+                  Estamos agendando tu consulta
+                </h1>
+                <p className="mt-3 max-w-xl text-[17px] leading-7 text-white/85">
+                  Ya recibimos tus datos. Esperá un momento mientras confirmamos
+                  el horario.
+                </p>
+              </div>
+            )}
+            {confirmationStatus === "success" && (
+              <div className="rounded-[28px] bg-[var(--brand)] px-7 py-11 text-white sm:px-9">
+                <Check size={32} className="opacity-70" />
+                <h1 className="mt-6 text-[32px] font-medium tracking-[-.025em] sm:text-[34px]">
+                  Consulta confirmada
+                </h1>
+                <p className="mt-3 max-w-xl text-[17px] leading-7 text-white/85">
+                  Te esperamos el {selectedDay.label.toLowerCase()} a las {time}{" "}
+                  en {business.address}.
+                </p>
+                {bookingToken && (
+                  <a
+                    href={`/turno/${bookingToken}`}
+                    className="mt-8 inline-flex h-12 items-center rounded-full bg-white px-7 font-medium text-[var(--brand)]"
+                  >
+                    Administrar mi turno
+                  </a>
+                )}
+              </div>
+            )}
+            {confirmationStatus === "error" && (
+              <div className="rounded-[28px] border border-red-200 bg-white px-7 py-11 sm:px-9">
+                <h1 className="text-[30px] font-medium tracking-[-.025em] text-red-800">
+                  No pudimos confirmar el turno
+                </h1>
+                <p className="mt-3 max-w-xl text-[16px] leading-7 text-red-700">
+                  {error}
+                </p>
+                <Button
+                  onClick={() => {
+                    setConfirmationStatus("idle");
+                    setError("");
+                    setStep("data");
+                  }}
+                  className="mt-7 h-12 rounded-full bg-[var(--brand)] px-7"
                 >
-                  Administrar mi turno
-                </a>
-              )}
-            </div>
+                  Volver e intentar nuevamente
+                </Button>
+              </div>
+            )}
           </section>
         )}
       </div>
