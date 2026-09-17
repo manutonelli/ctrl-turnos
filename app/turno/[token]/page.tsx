@@ -26,17 +26,17 @@ export default function ManageBooking({ params }: { params: Promise<{ token: str
     setBooking(data.booking); setMessage("La consulta fue cancelada.");
   }
 
-  return <main className="min-h-screen bg-[#f3f6fa] px-5 py-12 text-[#142438]">
-    <section className="mx-auto max-w-xl rounded-3xl border border-[#d8e1ea] bg-white p-7 shadow-sm sm:p-10">
-      <p className="text-sm font-semibold text-[#173f70]">AREA ESTUDIO CONTABLE</p>
-      <h1 className="mt-2 text-3xl font-semibold">Administrar consulta</h1>
+  return <main className="min-h-screen bg-[var(--page-bg)] px-5 py-12 text-[var(--text)]">
+    <section className="mx-auto max-w-[680px] rounded-[28px] bg-white p-7 shadow-[0_18px_50px_rgba(16,47,85,.07)] sm:p-10">
+      <p className="text-xs font-medium tracking-[.12em] text-[var(--text-faint)]">AREA ESTUDIO CONTABLE</p>
+      <h1 className="mt-3 text-[30px] font-medium tracking-[-.025em] sm:text-[36px]">Administrar mi turno</h1>
       {error && <p className="mt-6 rounded-xl bg-red-50 p-4 text-red-700">{error}</p>}
       {message && <p className="mt-6 rounded-xl bg-blue-50 p-4 text-[#173f70]">{message}</p>}
       {!booking && !error && <p className="mt-6 text-[#687381]">Cargando turno…</p>}
-      {booking && <div className="mt-7 space-y-5">
-        <div className="rounded-2xl bg-[#edf4fb] p-5"><p className="text-sm text-[#687381]">Titular</p><p className="font-semibold">{booking.name}</p><p className="mt-4 text-sm text-[#687381]">Fecha y hora</p><p className="font-semibold">{booking.date} · {booking.time}</p><p className="mt-4 text-sm text-[#687381]">Estado</p><p className="font-semibold">{booking.status}</p></div>
-        {booking.status === "Confirmado" && <div className="grid gap-3 sm:grid-cols-2"><Button asChild variant="outline" className="h-11 rounded-xl"><a href={`/?reprogramar=${token}`}>Reprogramar</a></Button><Button variant="destructive" className="h-11 rounded-xl" onClick={cancel}>Cancelar consulta</Button></div>}
-        <p className="text-sm text-[#687381]">Los cambios están disponibles hasta una hora antes del turno.</p>
+      {booking && <div className="mt-8 space-y-6">
+        <div className="rounded-[24px] border border-[var(--border)] p-6"><p className="text-[15px] text-[var(--text-muted)]">{booking.date}</p><p className="mt-1 text-[30px] font-medium">{booking.time}</p><p className="mt-2 text-[var(--text-muted)]">{booking.name} · Consulta contable</p><p className="mt-4 inline-flex rounded-full bg-[var(--selected-bg)] px-3 py-1 text-sm text-[var(--brand)]">{booking.status}</p></div>
+        {booking.status === "Confirmado" && <div className="flex flex-wrap gap-3"><Button asChild variant="outline" className="h-11 rounded-full border-[var(--border)] px-6"><a href={`/?reprogramar=${token}`}>Reprogramar</a></Button><button className="px-3 font-medium text-[#9a4046]" onClick={cancel}>Cancelar turno</button></div>}
+        <p className="text-sm text-[var(--text-muted)]">Podés reprogramar o cancelar hasta una hora antes.</p>
       </div>}
     </section>
   </main>;

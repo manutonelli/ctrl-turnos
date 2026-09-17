@@ -51,20 +51,19 @@ export function MyBookingsPanel() {
     }
   }
 
-  return <section className="mx-auto max-w-xl px-5 py-10">
-    <div className="rounded-3xl border border-[#d8e1ea] bg-white p-7 shadow-sm sm:p-10">
-      <p className="text-sm font-semibold text-[#173f70]">AREA ESTUDIO CONTABLE</p>
-      <h1 className="mt-2 text-3xl font-semibold">Administrar mi turno</h1>
-      <p className="mt-3 text-[#687381]">Ingresá los mismos datos que usaste al reservar.</p>
+  return <section className="mx-auto max-w-[760px] px-5 py-12 sm:py-16">
+    <div className="rounded-[28px] bg-white p-7 shadow-[0_18px_50px_rgba(16,47,85,.07)] sm:p-10">
+      <h1 className="text-[30px] font-medium tracking-[-.025em] sm:text-[36px]">Administrar mi turno</h1>
+      <p className="mt-3 text-[var(--text-muted)]">Ingresá los mismos datos que usaste al reservar.</p>
       <form className="mt-7 space-y-4" onSubmit={lookup}>
         <label className="block text-sm font-semibold">Email<Input name="email" required type="email" autoComplete="email" className="mt-2 h-11 rounded-xl" placeholder="nombre@email.com" /></label>
         <label className="block text-sm font-semibold">WhatsApp<Input name="whatsapp" required inputMode="tel" autoComplete="tel" className="mt-2 h-11 rounded-xl" placeholder="Ej: 2345 43-8544" /></label>
         {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        <Button disabled={loading} className="h-12 w-full rounded-xl bg-[#173f70] text-base hover:bg-[#102f55]"><Search />{loading ? "Buscando…" : "Buscar mis turnos"}</Button>
+        <Button disabled={loading} className="h-12 w-full rounded-full bg-[var(--brand)] text-base hover:bg-[var(--brand-hover)]"><Search />{loading ? "Buscando…" : "Buscar mis turnos"}</Button>
       </form>
       {searched && <div className="mt-8 border-t border-[#e3e9ef] pt-7">
         <h2 className="font-semibold">Tus próximos turnos</h2>
-        {bookings.length === 0 ? <p className="mt-3 rounded-2xl bg-[#f3f6fa] p-4 text-sm text-[#687381]">No encontramos turnos activos con esos datos.</p> : <div className="mt-4 space-y-3">{bookings.map((booking) => <div key={booking.token} className="rounded-2xl border border-[#d8e1ea] p-4"><div className="flex items-center gap-3"><CalendarDays className="text-[#173f70]" /><span><strong className="block">{friendlyDate(booking.date)} · {booking.time}</strong><small className="mt-1 block text-[#687381]">{booking.name}</small></span></div><div className="mt-4 grid grid-cols-2 gap-2"><Button asChild variant="outline" className="rounded-xl"><a href={`/?reprogramar=${booking.token}`}>Reprogramar</a></Button><Button type="button" variant="destructive" className="rounded-xl" onClick={() => cancel(booking.token)}>Cancelar</Button></div></div>)}</div>}
+        {bookings.length === 0 ? <p className="mt-3 rounded-2xl bg-[var(--surface-2)] p-4 text-sm text-[var(--text-muted)]">No encontramos turnos activos con esos datos.</p> : <div className="mt-4 space-y-4">{bookings.map((booking) => <div key={booking.token} className="rounded-[24px] border border-[var(--border)] p-5"><p className="text-[15px] text-[var(--text-muted)]">{friendlyDate(booking.date)}</p><strong className="mt-1 block text-[30px] font-medium">{booking.time}</strong><p className="mt-1 text-[var(--text-muted)]">{booking.name} · Consulta contable</p><div className="mt-5 flex flex-wrap gap-3"><Button asChild variant="outline" className="rounded-full border-[var(--border)] px-6"><a href={`/?reprogramar=${booking.token}`}>Reprogramar</a></Button><button type="button" className="px-3 font-medium text-[#9a4046]" onClick={() => cancel(booking.token)}>Cancelar turno</button></div></div>)}</div>}
       </div>}
     </div>
   </section>;
