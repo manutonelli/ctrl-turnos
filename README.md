@@ -15,6 +15,10 @@ Turnera web para AREA Estudio Contable. El frontend se conecta con Google Sheets
 
 La URL de Apps Script nunca se expone directamente al navegador: la aplicación usa `/api/turnos` como intermediario.
 
+## Panel administrativo
+
+El panel se abre en `/?admin=1`. Configurar `ADMIN_PASSWORD` como secreto cifrado en Cloudflare. Después de actualizar `apps-script/Code.gs`, ejecutar nuevamente `setupCtrlTurnos` y crear una nueva versión de la implementación de Apps Script.
+
 ## Base técnica
 
 A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.

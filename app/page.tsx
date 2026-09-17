@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MyBookingsPanel } from "./my-bookings-panel";
+import { AdminPanel } from "./admin-panel";
 
 const allTimes = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30"];
 
@@ -31,6 +32,7 @@ const days = nextBusinessDays();
 
 export default function Home() {
   const [manage, setManage] = useState(false);
+  const [admin, setAdmin] = useState(false);
   const [day, setDay] = useState(days[0].date);
   const [time, setTime] = useState("");
   const [open, setOpen] = useState(false);
@@ -44,6 +46,7 @@ export default function Home() {
 
   useEffect(() => {
     setManage(new URLSearchParams(window.location.search).get("administrar") === "1");
+    setAdmin(new URLSearchParams(window.location.search).get("admin") === "1");
     setReprogramToken(new URLSearchParams(window.location.search).get("reprogramar") || "");
     const params = new URLSearchParams({ action: "slots", from: days[0].date, to: days[days.length - 1].date });
     fetch(`/api/turnos?${params}`).then((response) => response.json()).then((data) => {
@@ -97,7 +100,7 @@ export default function Home() {
         </div>
       </header>
 
-      {manage ? <MyBookingsPanel /> : <section className="mx-auto grid max-w-6xl gap-8 px-5 py-8 md:grid-cols-[.85fr_1.6fr] md:px-8 md:py-14">
+      {admin ? <AdminPanel /> : manage ? <MyBookingsPanel /> : <section className="mx-auto grid max-w-6xl gap-8 px-5 py-8 md:grid-cols-[.85fr_1.6fr] md:px-8 md:py-14">
           <aside className="self-start rounded-3xl bg-[#102f55] p-7 text-white shadow-[0_20px_60px_rgba(16,47,85,.18)] md:sticky md:top-8 md:p-9">
             <img src="/area-logo.png" alt="AREA Estudio Contable" className="mb-7 w-full max-w-[230px] object-contain" />
             <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[.14em] text-[#cbdcf2]">Consultas presenciales</span>
