@@ -99,7 +99,7 @@ export default function Home() {
 
       {manage ? <MyBookingsPanel /> : <section className="mx-auto grid max-w-6xl gap-8 px-5 py-8 md:grid-cols-[.85fr_1.6fr] md:px-8 md:py-14">
           <aside className="self-start rounded-3xl bg-[#102f55] p-7 text-white shadow-[0_20px_60px_rgba(16,47,85,.18)] md:sticky md:top-8 md:p-9">
-            <img src="/area-logo.png" alt="AREA Estudio Contable" className="mb-7 w-full max-w-[230px] rounded-xl bg-black object-contain" />
+            <img src="/area-logo.png" alt="AREA Estudio Contable" className="mb-7 w-full max-w-[230px] object-contain" />
             <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[.14em] text-[#cbdcf2]">Consultas presenciales</span>
             <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-[-.04em]">Reservá tu consulta con AREA.</h1>
             <p className="mt-4 text-base leading-7 text-[#d6e2f0]">Elegí el día y horario que te resulte más cómodo. La confirmación es inmediata.</p>
