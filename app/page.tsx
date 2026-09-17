@@ -69,16 +69,21 @@ function BrandHeader({
   return (
     <header className="flex items-center justify-between">
       <button className="flex items-center gap-3 text-left" onClick={onHome}>
-        <span className="grid h-14 w-16 place-items-center rounded-2xl bg-[var(--brand)] p-2">
-          <img
-            src="/area-logo.png"
-            alt={businessName}
-            className="max-h-full max-w-full object-contain"
-          />
-        </span>
-        <span className="hidden max-w-48 text-[15px] font-medium leading-tight text-[var(--brand)] sm:block">
-          {businessName}
-        </span>
+        <span
+          role="img"
+          aria-label={businessName}
+          className="block h-16 w-36 bg-[var(--brand)] sm:h-20 sm:w-44"
+          style={{
+            WebkitMaskImage: "url(/area-logo.png)",
+            WebkitMaskPosition: "center",
+            WebkitMaskRepeat: "no-repeat",
+            WebkitMaskSize: "contain",
+            maskImage: "url(/area-logo.png)",
+            maskPosition: "center",
+            maskRepeat: "no-repeat",
+            maskSize: "contain",
+          }}
+        />
       </button>
       <button
         onClick={onManage}
