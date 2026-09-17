@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input";
 
 type Booking = { token: string; date: string; time: string; name: string; status: string };
 
+function friendlyDate(value: string) {
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  const formatted = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long" }).format(date);
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
 export function MyBookingsPanel() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [error, setError] = useState("");
@@ -57,7 +64,7 @@ export function MyBookingsPanel() {
       </form>
       {searched && <div className="mt-8 border-t border-[#e3e9ef] pt-7">
         <h2 className="font-semibold">Tus próximos turnos</h2>
-        {bookings.length === 0 ? <p className="mt-3 rounded-2xl bg-[#f3f6fa] p-4 text-sm text-[#687381]">No encontramos turnos activos con esos datos.</p> : <div className="mt-4 space-y-3">{bookings.map((booking) => <div key={booking.token} className="rounded-2xl border border-[#d8e1ea] p-4"><div className="flex items-center gap-3"><CalendarDays className="text-[#173f70]" /><span><strong className="block">{booking.date} · {booking.time}</strong><small className="mt-1 block text-[#687381]">{booking.name}</small></span></div><div className="mt-4 grid grid-cols-2 gap-2"><Button asChild variant="outline" className="rounded-xl"><a href={`/?reprogramar=${booking.token}`}>Reprogramar</a></Button><Button type="button" variant="destructive" className="rounded-xl" onClick={() => cancel(booking.token)}>Cancelar</Button></div></div>)}</div>}
+        {bookings.length === 0 ? <p className="mt-3 rounded-2xl bg-[#f3f6fa] p-4 text-sm text-[#687381]">No encontramos turnos activos con esos datos.</p> : <div className="mt-4 space-y-3">{bookings.map((booking) => <div key={booking.token} className="rounded-2xl border border-[#d8e1ea] p-4"><div className="flex items-center gap-3"><CalendarDays className="text-[#173f70]" /><span><strong className="block">{friendlyDate(booking.date)} · {booking.time}</strong><small className="mt-1 block text-[#687381]">{booking.name}</small></span></div><div className="mt-4 grid grid-cols-2 gap-2"><Button asChild variant="outline" className="rounded-xl"><a href={`/?reprogramar=${booking.token}`}>Reprogramar</a></Button><Button type="button" variant="destructive" className="rounded-xl" onClick={() => cancel(booking.token)}>Cancelar</Button></div></div>)}</div>}
       </div>}
     </div>
   </section>;
