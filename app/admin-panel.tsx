@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CtrlTurnosBrand } from "./ctrl-turnos-brand";
 
 type Schedule = {
   weekday: number;
@@ -818,6 +819,7 @@ export function AdminPanel() {
           </Button>
         </div>
       </div>
+      <CtrlTurnosBrand />
     </section>
   );
 }
