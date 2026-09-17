@@ -3,6 +3,7 @@ const TIME_ZONE = "America/Argentina/Buenos_Aires";
 const TURNOS_SHEET = "Turnos";
 const CONFIG_SHEET = "Horarios";
 const BLOCKS_SHEET = "Bloqueos";
+let BOOK_CACHE_ = null;
 
 function doGet() {
   return json_({ ok: true, service: "Ctrl Turnos - AREA" });
@@ -33,7 +34,7 @@ function doPost(event) {
 }
 
 function setupCtrlTurnos() {
-  const book = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const book = book_();
   const sheet = book.getSheetByName(TURNOS_SHEET);
   if (!sheet) throw new Error("No existe la hoja Turnos");
   if (!book.getSheetByName(CONFIG_SHEET)) {
@@ -51,6 +52,10 @@ function setupCtrlTurnos() {
 }
 
 function listSlots_(from, to) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "slots:" + cacheVersion_() + ":" + from + ":" + to;
+  const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
   const start = parseDate_(from);
   const end = parseDate_(to);
   if (!start || !end) throw new Error("Rango de fechas inválido");
@@ -73,6 +78,7 @@ function listSlots_(from, to) {
     }
     cursor.setDate(cursor.getDate() + 1);
   }
+  cache.put(cacheKey, JSON.stringify(slots), 60);
   return slots;
 }
 
@@ -87,6 +93,7 @@ function createBooking_(booking) {
     const token = Utilities.getUuid().replace(/-/g, "");
     const now = new Date();
     sheet_().appendRow([id, parseDate_(booking.date), booking.time, clean_(booking.name), clean_(booking.whatsapp), clean_(booking.email), clean_(booking.notes || ""), "Confirmado", token, now, now]);
+    bumpCacheVersion_();
     return { id, token, date: booking.date, time: booking.time, status: "Confirmado" };
   } finally {
     lock.releaseLock();
@@ -121,6 +128,7 @@ function cancelBooking_(token) {
   record.sheet.getRange(record.row, 8).setValue("Cancelado");
   record.sheet.getRange(record.row, 11).setValue(new Date());
   record.values[7] = "Cancelado";
+  bumpCacheVersion_();
   return serializeRow_(record.values, record.displayTime);
 }
 
@@ -140,6 +148,7 @@ function rescheduleBooking_(token, date, time) {
     record.sheet.getRange(record.row, 11).setValue(new Date());
     record.values[1] = parseDate_(date);
     record.values[2] = time;
+    bumpCacheVersion_();
     return serializeRow_(record.values, time);
   } finally {
     lock.releaseLock();
@@ -206,7 +215,7 @@ function requireSecret_(secret) {
 }
 
 function getSchedule_() {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(CONFIG_SHEET);
+  const sheet = book_().getSheetByName(CONFIG_SHEET);
   const defaults = [1,2,3,4,5].map((day, index) => ({ weekday: day, label: ["Lunes","Martes","Miércoles","Jueves","Viernes"][index], active: true, start: "09:00", end: "13:00", interval: 30 }));
   if (!sheet || sheet.getLastRow() < 6) return defaults;
   const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getDisplayValues()
@@ -221,20 +230,24 @@ function saveSchedule_(schedule) {
   const sheet = ensureSheet_(CONFIG_SHEET, ["Dia", "Nombre", "Activo", "Desde", "Hasta", "Intervalo"]);
   if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).clearContent();
   sheet.getRange(2, 1, 5, 6).setValues(schedule.map(rule => [rule.weekday, rule.label, Boolean(rule.active), rule.start, rule.end, Number(rule.interval) || 30]));
+  bumpCacheVersion_();
 }
 function blockedDates_() { const sheet = ensureSheet_(BLOCKS_SHEET, ["Fecha"]); if (sheet.getLastRow() < 2) return []; return sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().map(row => row[0] instanceof Date ? formatDate_(row[0]) : String(row[0])).filter(Boolean).sort(); }
 function blockedDateMap_() { const map = {}; blockedDates_().forEach(date => map[date] = true); return map; }
-function addBlock_(date) { if (!parseDate_(date)) throw new Error("Fecha inválida"); if (!blockedDateMap_()[date]) ensureSheet_(BLOCKS_SHEET, ["Fecha"]).appendRow([parseDate_(date)]); }
-function removeBlock_(date) { const sheet = ensureSheet_(BLOCKS_SHEET, ["Fecha"]); for (let row = sheet.getLastRow(); row >= 2; row--) { const value = sheet.getRange(row, 1).getValue(); const formatted = value instanceof Date ? formatDate_(value) : String(value); if (formatted === date) sheet.deleteRow(row); } }
+function addBlock_(date) { if (!parseDate_(date)) throw new Error("Fecha inválida"); if (!blockedDateMap_()[date]) { ensureSheet_(BLOCKS_SHEET, ["Fecha"]).appendRow([parseDate_(date)]); bumpCacheVersion_(); } }
+function removeBlock_(date) { const sheet = ensureSheet_(BLOCKS_SHEET, ["Fecha"]); let changed = false; for (let row = sheet.getLastRow(); row >= 2; row--) { const value = sheet.getRange(row, 1).getValue(); const formatted = value instanceof Date ? formatDate_(value) : String(value); if (formatted === date) { sheet.deleteRow(row); changed = true; } } if (changed) bumpCacheVersion_(); }
 function adminBookings_() { const sheet = sheet_(); if (sheet.getLastRow() < 2) return []; const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11); const values = range.getValues(); const display = range.getDisplayValues(); const today = formatDate_(new Date()); return values.map((row, i) => serializeRow_(row, display[i][2])).filter(item => item.status === "Confirmado" && item.date >= today).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time)).slice(0, 50); }
 function findById_(id) { const sheet = sheet_(); if (!id || sheet.getLastRow() < 2) throw new Error("Turno no encontrado"); const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11); const rows = range.getValues(); const display = range.getDisplayValues(); const index = rows.findIndex(row => String(row[0]) === String(id)); if (index < 0) throw new Error("Turno no encontrado"); return { sheet, row: index + 2, values: rows[index], displayTime: display[index][2] }; }
-function adminCancel_(id) { const record = findById_(id); record.sheet.getRange(record.row, 8).setValue("Cancelado"); record.sheet.getRange(record.row, 11).setValue(new Date()); record.values[7] = "Cancelado"; return serializeRow_(record.values, record.displayTime); }
-function adminReschedule_(id, date, time) { validateSlot_(date, time); const record = findById_(id); const newKey = date + "|" + time; const currentKey = formatDate_(new Date(record.values[1])) + "|" + record.displayTime; if (bookedKeys_()[newKey] && newKey !== currentKey) throw new Error("Ese horario ya está ocupado"); record.sheet.getRange(record.row, 2).setValue(parseDate_(date)); record.sheet.getRange(record.row, 3).setValue(time); record.sheet.getRange(record.row, 8).setValue("Confirmado"); record.sheet.getRange(record.row, 11).setValue(new Date()); record.values[1] = parseDate_(date); record.values[7] = "Confirmado"; return serializeRow_(record.values, time); }
-function ensureSheet_(name, headers) { const book = SpreadsheetApp.openById(SPREADSHEET_ID); let sheet = book.getSheetByName(name); if (!sheet) { sheet = book.insertSheet(name); sheet.appendRow(headers); } return sheet; }
+function adminCancel_(id) { const record = findById_(id); record.sheet.getRange(record.row, 8).setValue("Cancelado"); record.sheet.getRange(record.row, 11).setValue(new Date()); record.values[7] = "Cancelado"; bumpCacheVersion_(); return serializeRow_(record.values, record.displayTime); }
+function adminReschedule_(id, date, time) { validateSlot_(date, time); const record = findById_(id); const newKey = date + "|" + time; const currentKey = formatDate_(new Date(record.values[1])) + "|" + record.displayTime; if (bookedKeys_()[newKey] && newKey !== currentKey) throw new Error("Ese horario ya está ocupado"); record.sheet.getRange(record.row, 2).setValue(parseDate_(date)); record.sheet.getRange(record.row, 3).setValue(time); record.sheet.getRange(record.row, 8).setValue("Confirmado"); record.sheet.getRange(record.row, 11).setValue(new Date()); record.values[1] = parseDate_(date); record.values[7] = "Confirmado"; bumpCacheVersion_(); return serializeRow_(record.values, time); }
+function ensureSheet_(name, headers) { const book = book_(); let sheet = book.getSheetByName(name); if (!sheet) { sheet = book.insertSheet(name); sheet.appendRow(headers); } return sheet; }
+function book_() { if (!BOOK_CACHE_) BOOK_CACHE_ = SpreadsheetApp.openById(SPREADSHEET_ID); return BOOK_CACHE_; }
+function cacheVersion_() { return PropertiesService.getScriptProperties().getProperty("CACHE_VERSION") || "1"; }
+function bumpCacheVersion_() { const properties = PropertiesService.getScriptProperties(); properties.setProperty("CACHE_VERSION", String(Number(properties.getProperty("CACHE_VERSION") || "1") + 1)); }
 function toMinutes_(time) { const parts = String(time).split(":").map(Number); return parts[0] * 60 + parts[1]; }
 function fromMinutes_(minutes) { return String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0"); }
 
-function sheet_() { return SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(TURNOS_SHEET); }
+function sheet_() { return book_().getSheetByName(TURNOS_SHEET); }
 function clean_(value) { return String(value).trim().slice(0, 500); }
 function normalizeEmail_(value) { return String(value || "").trim().toLowerCase(); }
 function normalizePhone_(value) { return String(value || "").replace(/\D/g, ""); }
